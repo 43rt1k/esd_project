@@ -91,11 +91,12 @@ module or1420SingleCore ( input wire         clock12MHz,
   //===========================================================================
   // Custom instruction done/result wires
   //===========================================================================
-  wire        s_hdmiDone,         s_swapByteDone,       s_flashDone,      s_cpuFreqDone;
-  wire        s_camCiDone,        s_i2cCiDone,          s_delayCiDone;
+  wire        s_hdmiDone,         s_swapByteDone,       s_flashDone,      s_cpuFreqDone,
+              s_camCiDone,        s_i2cCiDone,          s_delayCiDone,    s_profileDone,  
+              s_grayDone;
   wire [31:0] s_hdmiResult,       s_swapByteResult,     s_flashResult,    s_cpuFreqResult;
   wire [31:0] s_camCiResult,      s_i2cCiResult,        s_delayResult;
-  wire [31:0] s_cpuFreqValue;
+  wire [31:0] s_cpuFreqValue, s_profileResult, s_grayResult;
   //===========================================================================
   // BIOS
   //===========================================================================
@@ -157,11 +158,11 @@ module or1420SingleCore ( input wire         clock12MHz,
   // CPU custom instruction output multiplexing
   assign s_cpu1CiDone =   s_hdmiDone      | s_swapByteDone   | s_flashDone    | 
                           s_cpuFreqDone   | s_i2cCiDone      | s_delayCiDone  | 
-                          s_camCiDone;
+                          s_camCiDone     | s_profileDone    | s_grayDone;
 
   assign s_cpu1CiResult = s_hdmiResult    | s_swapByteResult | s_flashResult  | 
                           s_cpuFreqResult | s_i2cCiResult    | s_camCiResult  | 
-                          s_delayResult; 
+                          s_delayResult   | s_profileResult  | s_grayResult;
 
   assign s_cpu1CiCke = 1'b1;
   
@@ -706,7 +707,62 @@ module or1420SingleCore ( input wire         clock12MHz,
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
+  // A profile ISE
+  myProfileISE #( .customId(8'h0B)) profiler 
+                ( .start(s_cpu1CiStart),
+                  .clock(s_systemClock),
+                  .reset(s_cpuReset),
+                  .stall(s_stall),   
+                  .busIdle(s_busIdle),
+                  .valueA(s_cpu1CiDataA),
+                  .valueB(s_cpu1CiDataB),
+                  .ciN(s_cpu1CiN),
+                  .done(s_profileDone),
+                  .result(s_profileResult) );
 
+
+  // An rgb to grayscale ISE
+  myGrayscaleISE #( .customInstructionId(8'h0C)) converter
+                  ( .start(s_cpu1CiStart),
+                    .valueA(s_cpu1CiDataA),
+                    .valueB(s_cpu1CiDataB),
+                    .iseId(s_cpu1CiN),
+                    .done(s_grayDone),
+                    .result(s_grayResult) );
+
+
+  // Here the GPIO module is mapped
+  /*gpio #(.nrOfInputs(8),
+      .nrOfOutputs(24),
+      .Base(32'h40000000)) sevenSegDipSwitch
+      (.clock(s_systemClock),
+      .reset(s_cpuReset),
+      .externalInputs(nDipSwitch),
+      .externalOutputs(s_threeDigits),
+
+      // ← INPUTS DIRECT FROM CPU
+      .beginTransactionIn(s_cpu1BeginTransaction),
+      .endTransactionIn(s_cpu1EndTransaction),
+      .readNotWriteIn(s_cpu1ReadNotWrite),
+      .dataValidIn(s_cpu1DataValid),
+      .addressDataIn(s_cpu1AddressData),
+      .byteEnablesIn(s_cpu1byteEnables),
+      .burstSizeIn(s_cpu1BurstSize),
+
+      // ← OUTPUTS JOIN GLOBAL BUS
+      .endTransactionOut(s_GpioEndTransaction),
+      .dataValidOut(s_GpioDataValid),
+      .busErrorOut(s_GpioBusError),
+      .addressDataOut(s_GpioAddressData));
+
+
+  sevenSegScanning scan7segs (.clock(s_systemClock),
+                              .reset(s_cpuReset),
+                              .threeDigits(s_threeDigits),
+                              .digitSelect(digitSelect),
+                              .segmentSelect(SegmentsSelect));
+
+  */
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
