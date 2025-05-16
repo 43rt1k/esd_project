@@ -27,10 +27,11 @@ module or1420SingleCore ( input wire         clock12MHz,
                                              horizontalSync,
                                              verticalSync,
                                              activePixel,
-                          
+                          /*
                           input wire  [7:0]  nDipSwitch,
                           input wire  [2:0]  displaySelect,
                           output wire [7:0]  nSegments,
+                          */
 `ifdef GECKO5Education
                           output wire [4:0]  hdmiRed,
                                              hdmiBlue,
@@ -766,7 +767,7 @@ module or1420SingleCore ( input wire         clock12MHz,
                               .reset(s_cpuReset),
                               .threeDigits(s_threeDigits),
                               .displaySelect(displaySelect),
-                              .segmentSelect(sevenSegments));
+                              .nSegments(nSegments));
   
   
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––

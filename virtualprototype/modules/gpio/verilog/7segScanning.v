@@ -2,7 +2,7 @@ module sevenSegScanning (input wire        clock,
                                            reset,
                          input wire [23:0] threeDigits,
                          output wire [2:0] displaySelect,
-                         output reg  [7:0] segmentSelect);
+                         output reg  [7:0] nSegments);
 
   reg [16:0] clockDivideReg;
   wire clockDivideZero = (clockDivideReg == 17'd0) ? 1'b1 : 1'b0;
@@ -20,8 +20,8 @@ module sevenSegScanning (input wire        clock,
 
   always @*
     case (displaySelectReg)
-      2'd2    : segmentSelect <= ~threeDigits[7:0];
-      2'd1    : segmentSelect <= ~threeDigits[15:8];
-      default : segmentSelect <= ~threeDigits[23:16];
+      2'd2    : nSegments <= ~threeDigits[7:0];
+      2'd1    : nSegments <= ~threeDigits[15:8];
+      default : nSegments <= ~threeDigits[23:16];
     endcase
 endmodule
