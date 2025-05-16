@@ -10,6 +10,7 @@ def list_available_cameras(max_devices=10):
     return available
 
 def main():
+    """
     print("🔍 Searching for available camera devices...")
     cameras = list_available_cameras()
     if not cameras:
@@ -29,9 +30,9 @@ def main():
                 print("Invalid selection. Try again.")
         except ValueError:
             print("Please enter a number.")
-
+    """
+    selected = 0
     cap = cv2.VideoCapture(selected)
-
     if not cap.isOpened():
         print("❌ Failed to open the selected camera.")
         return

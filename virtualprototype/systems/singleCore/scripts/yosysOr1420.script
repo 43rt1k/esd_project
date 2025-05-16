@@ -59,8 +59,8 @@ read -sv ../../../modules/myProfileISE/verilog/_myCounterCi.v
 read -sv ../../../modules/myGrayscaleISE/verilog/_myGrayscale1pixelCI.v
 read -sv ../../../modules/myGrayscaleISE/verilog/myGrayscaleISE.v
 
-#read -sv ../../../modules/myGpio/verilog/gpio.v
-#read -sv ../../../modules/myGpio/verilog/7segScanning.v
+read -sv ../../../modules/gpio/verilog/gpio.v
+read -sv ../../../modules/gpio/verilog/7segScanning.v
 
 #read -sv ../../../modules/myRamDmaCi/verilog/dualPortSSram.v
 #read -sv ../../../modules/myRamDmaCi/verilog/ramDmaCi.v

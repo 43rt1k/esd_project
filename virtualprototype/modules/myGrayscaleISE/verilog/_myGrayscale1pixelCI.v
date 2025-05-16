@@ -84,9 +84,9 @@ module _myGrayscale1pixelCI(  input wire [15:0] rgb565,
   // Division by 256 is performed by taking the upper 8 bits of the final 16-bit sum.
   //=============================================================
   // Sum red and blue contributions.
-  wire [12:0] _rbSum = {1'b0, _red_x54} + {1'b0, _blue_x19}; // 13-bit sum.
+  wire [12:2] _rbSum = {1'b0, _red_x54} + {1'b0, _blue_x19}; // 13-bit sum.
   // Add green contribution; extend widths to 16 bits.
-  wire [15:0] _rgbSum = {3'b0, _rbSum} + {1'b0, _green_x183}; // 16-bit final sum.
+  wire [15:2] _rgbSum = {3'b0, _rbSum} + {1'b0, _green_x183}; // 16-bit final sum.
   
   // Extract the upper 8 bits to perform the division by 256.
   assign grayscale = _rgbSum[15:8];
