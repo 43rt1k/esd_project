@@ -27,11 +27,11 @@ module or1420SingleCore ( input wire         clock12MHz,
                                              horizontalSync,
                                              verticalSync,
                                              activePixel,
-                          /*
+
                           input wire  [7:0]  nDipSwitch,
-                          input wire  [2:0]  displaySelect,
+                          output wire  [2:0] displaySelect,
                           output wire [7:0]  nSegments,
-                          */
+
 `ifdef GECKO5Education
                           output wire [4:0]  hdmiRed,
                                              hdmiBlue,
@@ -762,7 +762,10 @@ module or1420SingleCore ( input wire         clock12MHz,
           .busErrorOut(s_GpioBusError),
           .addressDataOut(s_GpioAddressData));
 
-  
+
+  //assign s_threeDigits = {8'h3F, 8'h06, 8'h5B};  // 5 on digit 2
+
+
   sevenSegScanning scan7segs (.clock(s_systemClock),
                               .reset(s_cpuReset),
                               .threeDigits(s_threeDigits),

@@ -10,7 +10,7 @@ module sevenSegScanning (input wire        clock,
   always @(posedge clock)
     clockDivideReg <= (reset == 1'b1 || clockDivideZero == 1'b1) ? 17'd74249 : clockDivideReg - 1;
 
-  reg [3:0] displaySelectReg;
+  reg [2:0] displaySelectReg;
   
   always @(posedge clock)
     displaySelectReg <= ((displaySelectReg == 3'd0 && clockDivideZero == 1'b1) || reset == 1'b1) ? 3'd2 : 

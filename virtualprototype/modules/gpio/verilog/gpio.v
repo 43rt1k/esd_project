@@ -91,5 +91,7 @@ module gpio #(parameter        nrOfInputs = 8,
                              (s_isReadAction == 1'b1 && s_beginTransactionReg == 1'b1) ? { {(32-nrOfOutputs){1'b0}} , s_externalInputsReg } :
                              (busyIn == 1'b1) ? s_addressDataOutReg : 32'd0;
       s_endTransReg       <= s_dataValidOutReg & ~busyIn;
-    end               
+    end    
+    
+               
 endmodule
