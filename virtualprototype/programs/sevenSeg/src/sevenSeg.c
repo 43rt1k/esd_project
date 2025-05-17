@@ -96,15 +96,13 @@ int main () {
         // Block until one image is captured into rgb565 buffer
         takeSingleImageBlocking((uint32_t) &rgb565[0]);
         
-        
-        
-
-
+    
         
         // Read 8-bit dip switch value (active-low XOR mask)
         //uint32_t dipswitch = swap_u32(gpio[0]) ^ 0xFF;
-        uint32_t dipswitch = gpio[0];  // DO NOT SWAP
-
+        /*
+        uint32_t dipswitch = gpio[0]; 
+        
         // Print the dip switch value
         printf("DIP Switch: %d\n", dipswitch);
         // Convert dip value into individual digits (BCD style)
@@ -115,10 +113,8 @@ int main () {
         printf("DIP Switch: %d (BCD: %d%d%d)\n", dipswitch, hundreds, tens, ones);
         // Convert digits to 7-segment encoding and pack them into a 24-bit value
         // Format: [hundreds][tens][ones] = [byte2][byte1][byte0]
-        //gpio[0] = swap_u32((SEVEN_SEG[hundreds] << 16) | (SEVEN_SEG[tens] << 8) | SEVEN_SEG[ones]);
-      
-      
-      
+        gpio[0] = swap_u32((SEVEN_SEG[hundreds] << 16) | (SEVEN_SEG[tens] << 8) | SEVEN_SEG[ones]);
+        */
       
       
       

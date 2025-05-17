@@ -27,11 +27,11 @@ module or1420SingleCore ( input wire         clock12MHz,
                                              horizontalSync,
                                              verticalSync,
                                              activePixel,
-
+/*
                           input wire  [7:0]  nDipSwitch,
-                          output wire  [2:0] displaySelect,
                           output wire [7:0]  nSegments,
-
+                          output wire  [2:0] displaySelect,
+*/
 `ifdef GECKO5Education
                           output wire [4:0]  hdmiRed,
                                              hdmiBlue,
@@ -48,8 +48,7 @@ module or1420SingleCore ( input wire         clock12MHz,
                                              camHsync,
                                              camVsync,
                                              biosBypass,
-                          input wire [7:0]   camData
-                           );
+                          input wire [7:0]   camData );
 
   //===========================================================================
   // Global wires and interconnect signals
@@ -100,7 +99,7 @@ module or1420SingleCore ( input wire         clock12MHz,
               s_grayDone;
   wire [31:0] s_hdmiResult,       s_swapByteResult,     s_flashResult,    s_cpuFreqResult;
   wire [31:0] s_camCiResult,      s_i2cCiResult,        s_delayResult;
-  wire [31:0] s_cpuFreqValue, s_profileResult, s_grayResult;
+  wire [31:0] s_cpuFreqValue,     s_profileResult,      s_grayResult;
   //===========================================================================
   // BIOS
   //===========================================================================
@@ -156,9 +155,9 @@ module or1420SingleCore ( input wire         clock12MHz,
   //===========================================================================
   // GPIO
   //===========================================================================
-  wire        s_GpioEndTransaction, s_GpioDataValid, s_GpioBusError;
-  wire [31:0] s_GpioAddressData;
-  wire [23:0] s_threeDigits;
+  //wire        s_GpioEndTransaction, s_GpioDataValid, s_GpioBusError;
+  //wire [31:0] s_GpioAddressData;
+  //wire [23:0] s_threeDigits;
   //===========================================================================
   // Assignments
   //===========================================================================
@@ -193,25 +192,25 @@ module or1420SingleCore ( input wire         clock12MHz,
 
   // Central bus error arbitration
   assign s_busError         = s_arbBusError         | s_biosBusError          | s_uartBusError        | 
-                              s_sdramBusError       | s_flashBusError         | s_GpioBusError;
+                              s_sdramBusError       | s_flashBusError         ;//| s_GpioBusError;
  
   // Global transaction signals
   assign s_beginTransaction = s_cpu1BeginTransaction | s_hdmiBeginTransaction | s_camBeginTransaction;
 
   assign s_endTransaction   = s_cpu1EndTransaction   | s_arbEndTransaction    | s_biosEndTransaction  | 
                               s_uartEndTransaction   | s_sdramEndTransaction  | s_hdmiEndTransaction  | 
-                              s_flashEndTransaction  | s_camEndTransaction    | s_GpioEndTransaction  ;
+                              s_flashEndTransaction  | s_camEndTransaction    ;//| s_GpioEndTransaction  ;
 
   assign s_addressData      = s_cpu1AddressData      | s_biosAddressData      | s_uartAddressData     | 
                               s_sdramAddressData     | s_hdmiAddressData      | s_flashAddressData    | 
-                              s_camAddressData       | s_GpioAddressData;
+                              s_camAddressData       ;//| s_GpioAddressData;
 
   assign s_byteEnables      = s_cpu1byteEnables      | s_hdmiByteEnables      | s_camByteEnables;
   assign s_readNotWrite     = s_cpu1ReadNotWrite     | s_hdmiReadNotWrite;
 
   assign s_dataValid        = s_cpu1DataValid        | s_biosDataValid        | s_uartDataValid       | 
                               s_sdramDataValid       | s_hdmiDataValid        | s_flashDataValid      | 
-                              s_camDataValid         | s_GpioDataValid;
+                              s_camDataValid         ;//| s_GpioDataValid;
 
   assign s_busy             = s_sdramBusy;
   assign s_burstSize        = s_cpu1BurstSize        | s_hdmiBurstSize        | s_camBurstSize;
@@ -736,31 +735,34 @@ module or1420SingleCore ( input wire         clock12MHz,
                     .iseId(s_cpu1CiN),
                     .done(s_grayDone),
                     .result(s_grayResult) );
+/*
 
-
-  // Here the GPIO module is mapped
+  // Here the GPIO module is mapped. GPIO is slave
   gpio #( .nrOfInputs(8),
           .nrOfOutputs(24),
-          .Base(32'h40000000)) sevenSegDipSwitch
-          (.clock(s_systemClock),
+          .Base(32'h40000000)
+  ) sevenSegDipSwitch (
+          .clock(s_systemClock),
           .reset(s_cpuReset),
+
           .externalInputs(nDipSwitch),
           .externalOutputs(s_threeDigits),
 
           // ← INPUTS DIRECT FROM CPU
-          .beginTransactionIn(s_cpu1BeginTransaction),
-          .endTransactionIn(s_cpu1EndTransaction),
-          .readNotWriteIn(s_cpu1ReadNotWrite),
-          .dataValidIn(s_cpu1DataValid),
           .addressDataIn(s_cpu1AddressData),
           .byteEnablesIn(s_cpu1byteEnables),
           .burstSizeIn(s_cpu1BurstSize),
+          .readNotWriteIn(s_cpu1ReadNotWrite),
+          .beginTransactionIn(s_cpu1BeginTransaction),
+          .endTransactionIn(s_cpu1EndTransaction),
+          .dataValidIn(s_cpu1DataValid),
 
           // ← OUTPUTS JOIN GLOBAL BUS
+          .addressDataOut(s_GpioAddressData),
           .endTransactionOut(s_GpioEndTransaction),
           .dataValidOut(s_GpioDataValid),
-          .busErrorOut(s_GpioBusError),
-          .addressDataOut(s_GpioAddressData));
+          .busErrorOut(s_GpioBusError));
+
 
 
   //assign s_threeDigits = {8'h3F, 8'h06, 8'h5B};  // 5 on digit 2
@@ -771,7 +773,7 @@ module or1420SingleCore ( input wire         clock12MHz,
                               .threeDigits(s_threeDigits),
                               .displaySelect(displaySelect),
                               .nSegments(nSegments));
-  
+*/  
   
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
