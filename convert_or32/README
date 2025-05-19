@@ -1,3 +1,0 @@
-To compile this utility:
-gcc -O2 -o convert_or32 read_elf.c convert_or32.c
-
