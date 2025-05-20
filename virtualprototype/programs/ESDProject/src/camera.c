@@ -1,3 +1,112 @@
+#include "camera.h"
+#include <swap.h>
+#include <vga.h>
+#include <stdio.h>
+
+
+void cam_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* result, volatile uint8_t* camOutput) {
+    vga_clear();
+    printf("Initialising camera (this takes up to 3 seconds)!\n");
+    *camParams = initOv7670(VGA);
+    printf("Done!\n");
+    printf("NrOfPixels : %d\n", camParams->nrOfPixelsPerLine);
+    *result = (camParams->nrOfPixelsPerLine <= 320) ? camParams->nrOfPixelsPerLine | 0x80000000 : camParams->nrOfPixelsPerLine;
+    vga[0] = swap_u32(*result);
+    printf("NrOfLines  : %d\n", camParams->nrOfLinesPerImage);
+    *result = (camParams->nrOfLinesPerImage <= 240) ? camParams->nrOfLinesPerImage | 0x80000000 : camParams->nrOfLinesPerImage;
+    vga[1] = swap_u32(*result);
+    printf("PCLK (kHz) : %d\n", camParams->pixelClockInkHz);
+    printf("FPS        : %d\n", camParams->framesPerSecond);
+    vga[2] = swap_u32(2);
+    vga[3] = swap_u32((uint32_t)camOutput);
+}
+
+void cam_rgb_2_gray(camParameters* camParams, volatile uint16_t* rgb565, volatile uint8_t* grayScale) {
+    uint32_t* rgb = (uint32_t*)rgb565;
+    uint32_t* gray = (uint32_t*)grayScale;
+    uint32_t grayPixels;
+
+    #ifdef __USING_rgb565ISE__
+    for (int pixel = 0; pixel < ((camParams->nrOfLinesPerImage * camParams->nrOfPixelsPerLine) >> 1); pixel += 2) {
+        uint32_t pixel1 = rgb[pixel];
+        uint32_t pixel2 = rgb[pixel + 1];
+        grayPixels = asm_rgb_2_gray(pixel1, pixel2);
+        gray[0] = grayPixels;
+        gray++;
+    }
+    #else
+    for (int line = 0; line < camParams->nrOfLinesPerImage; line++) {
+        for (int pixel = 0; pixel < camParams->nrOfPixelsPerLine; pixel++) {
+            uint16_t pixelVal = swap_u16(rgb565[line * camParams->nrOfPixelsPerLine + pixel]);
+            uint32_t red1   = ((pixelVal >> 11) & 0x1F) << 3;
+            uint32_t green1 = ((pixelVal >> 5)  & 0x3F) << 2;
+            uint32_t blue1  = (pixelVal & 0x1F) << 3;
+            uint32_t grayVal = ((red1 * 54 + green1 * 183 + blue1 * 19) >> 8) & 0xFF;
+            grayScale[line * camParams->nrOfPixelsPerLine + pixel] = grayVal;
+        }
+    }
+    #endif
+}
+
+uint32_t asm_rgb_2_gray(uint32_t pixel1, uint32_t pixel2) {
+    uint32_t result;
+    asm volatile (NIOS_INSTR " %[out1],%[in1],%[in2]," CI_ID_rgb565ISE : [out1] "=r" (result) : [in1] "r" (pixel1), [in2] "r" (pixel2));
+    return result;
+}
+
+void asm_sobel(const camParameters* camParams, volatile uint8_t* grayScale, volatile uint8_t* sobelOutput) {
+    int width = camParams->nrOfPixelsPerLine;
+    int height = camParams->nrOfLinesPerImage;
+    for (int y = 1; y < height - 2; y++) {
+        for (int x = 1; x < width - 2; x++) {
+            uint8_t p0 = grayScale[(y-1) * width + (x-1)];
+            uint8_t p1 = grayScale[(y-1) * width + (x  )];
+            uint8_t p2 = grayScale[(y-1) * width + (x+1)];
+            uint8_t p3 = grayScale[(y  ) * width + (x-1)];
+            uint8_t p5 = grayScale[(y  ) * width + (x+1)];
+            uint8_t p6 = grayScale[(y+1) * width + (x-1)];
+            uint8_t p7 = grayScale[(y+1) * width + (x  )];
+            uint8_t p8 = grayScale[(y+1) * width + (x+1)];
+
+            uint32_t valueA = (p3 << SOBEL_P3_LO) | (p2 << SOBEL_P2_LO) | (p1 << SOBEL_P1_LO) | (p0 << SOBEL_P0_LO);
+            uint32_t valueB = (p8 << SOBEL_P8_LO) | (p7 << SOBEL_P7_LO) | (p6 << SOBEL_P6_LO) | (p5 << SOBEL_P5_LO);
+
+            uint32_t result;
+            asm volatile (NIOS_INSTR " %[out1],%[in1],%[in2]," CI_ID_sobel : [out1] "=r" (result) : [in1] "r" (valueA), [in2] "r" (valueB));
+            sobelOutput[y * width + x] = result & 0xFF;
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
 #include <stdio.h>
 #include <ov7670.h>   // Header file for the OV7670 camera interface.
 #include <swap.h>     // Header file for byte-swapping functions (e.g., swap_u32, swap_u16).
@@ -345,3 +454,5 @@ void asm_sobel(const camParameters* camParams, volatile uint8_t* grayScale, vola
     }
 
 }
+
+*/

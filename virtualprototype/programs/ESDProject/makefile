@@ -1,4 +1,4 @@
-PROJECT = sobel
+PROJECT = ESDProject
 
 # please refer to the followings for more information:
 #   https://stackoverflow.com/a/30142139/2604712
