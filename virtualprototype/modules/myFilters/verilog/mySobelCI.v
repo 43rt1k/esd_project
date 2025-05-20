@@ -28,6 +28,10 @@ module mySobelCI #(	parameter [7:0]    customId = 8'h12)
 	localparam logic [10:0] MAG_MAX_11 = 11'd255;
 	localparam logic [10:0] MAG_MAX_8  = 8'd255;
 
+	localparam logic [10:0] MAG_THR_HI  = 8'd220;
+	localparam logic [10:0] MAG_THR_LO  = 8'd20;
+
+
 	/* 	Pixel packing convention (excluding center):
 	    p0   p1   p2     <- valueA[ 7:0], 	[15:8], 	[23:16]
 	    p3   p4   p5     <- valueA[31:24], 	ignored, 	valueB[ 7:0]
@@ -82,7 +86,9 @@ module mySobelCI #(	parameter [7:0]    customId = 8'h12)
 
 	wire [10:0] magnitude = dX_abs + dY_abs;
 
-	wire [7:0] s_result = (magnitude > MAG_MAX_11) ? MAG_MAX_8 : magnitude[7:0];
+	wire [7:0] magnitude_clipped = (magnitude > MAG_MAX_11) ? MAG_MAX_8 : magnitude[7:0];
+  wire [7:0] s_result = (magnitude > MAG_THR_HI) ? MAG_MAX_8 :
+                                 (magnitude < MAG_THR_LO) ? 8'd0 :      magnitude[7:0];
 
 	//========================================================================
 	// Result and done logic

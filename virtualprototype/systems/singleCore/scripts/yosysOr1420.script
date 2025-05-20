@@ -63,7 +63,8 @@ read -sv ../../../modules/my7Seg/verilog/sevenSegShow.v
 
 read -sv ../../../modules/myGpio/verilog/myGpio.v
 
-read -sv ../../../modules/mySobel/verilog/mySobelCI.v
+read -sv ../../../modules/myFilters/verilog/mySobelCI.v
+read -sv ../../../modules/myFilters/verilog/myGaussianCI.v
 
 #read -sv ../../../modules/myRamDmaCi/verilog/dualPortSSram.v
 #read -sv ../../../modules/myRamDmaCi/verilog/ramDmaCi.v

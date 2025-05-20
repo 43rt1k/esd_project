@@ -7,7 +7,8 @@ int main() {
     // Frame buffers
     volatile uint16_t rgb565[IMAGE_SIZE];
     volatile uint8_t grayScale[IMAGE_SIZE];
-    volatile uint8_t sobelBuffer[IMAGE_SIZE];
+    volatile uint8_t blurBuffer[IMAGE_SIZE];   // Gaussian output
+    volatile uint8_t sobelBuffer[IMAGE_SIZE];  // Sobel output
 
     // Peripherals
     volatile unsigned int* vga = (unsigned int*)0x50000020;
@@ -18,7 +19,7 @@ int main() {
     volatile ProfilingStatus profData;
 
     // Initialization
-    cam_init(&camParams, (unsigned int*)vga, &result, grayScale);
+    cam_init(&camParams, (unsigned int*)vga, &result, sobelBuffer);
     asm_reset_profiling();
 
     while (1) {
@@ -35,13 +36,16 @@ int main() {
         // RGB565 -> grayscale
         cam_rgb_2_gray(&camParams, rgb565, grayScale);
 
-        // Sobel filtering
-        asm_sobel(&camParams, grayScale, sobelBuffer);
+        // Gaussian filtering
+        asm_gaussian(&camParams, grayScale, blurBuffer);
+
+        // Sobel filtering on blurred image
+        asm_sobel(&camParams, blurBuffer, sobelBuffer);
 
         // Output result (Sobel) to VGA
-        for (int i = 0; i < IMAGE_SIZE; i++) {
-            grayScale[i] = sobelBuffer[i];
-        }
+        // for (int i = 0; i < IMAGE_SIZE; i++) {
+        //     grayScale[i] = sobelBuffer[i];
+        // }
 
         // Profiling read
         asm_read_profiling(&profData, 0);

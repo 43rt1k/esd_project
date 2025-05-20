@@ -96,10 +96,11 @@ module or1420SingleCore ( input wire         clock12MHz,
   //===========================================================================
   wire        s_hdmiDone,         s_swapByteDone,       s_flashDone,      s_cpuFreqDone,
               s_camCiDone,        s_i2cCiDone,          s_delayCiDone,    s_profileDone,  
-              s_grayDone,         s_sobelDone;
+              s_grayDone,         s_sobelDone,          s_gaussianDone;
   wire [31:0] s_hdmiResult,       s_swapByteResult,     s_flashResult,    s_cpuFreqResult;
   wire [31:0] s_camCiResult,      s_i2cCiResult,        s_delayResult;
-  wire [31:0] s_cpuFreqValue,     s_profileResult,      s_grayResult,     s_sobelResult;
+  wire [31:0] s_cpuFreqValue,     s_profileResult,      s_grayResult,     s_sobelResult,
+              s_gaussianResult;
   //===========================================================================
   // BIOS
   //===========================================================================
@@ -165,12 +166,12 @@ module or1420SingleCore ( input wire         clock12MHz,
   assign s_cpu1CiDone =   s_hdmiDone      | s_swapByteDone   | s_flashDone    | 
                           s_cpuFreqDone   | s_i2cCiDone      | s_delayCiDone  | 
                           s_camCiDone     | s_profileDone    | s_grayDone     |
-                          s_sobelDone;
+                          s_sobelDone     | s_gaussianDone;
 
   assign s_cpu1CiResult = s_hdmiResult    | s_swapByteResult | s_flashResult  | 
                           s_cpuFreqResult | s_i2cCiResult    | s_camCiResult  | 
                           s_delayResult   | s_profileResult  | s_grayResult   |
-                          s_sobelResult;
+                          s_sobelResult   | s_gaussianResult;
 
   assign s_cpu1CiCke = 1'b1;
   
@@ -783,6 +784,16 @@ module or1420SingleCore ( input wire         clock12MHz,
               .ciN(s_cpu1CiN),
               .done(s_sobelDone),
               .result(s_sobelResult) );
+
+  myGaussianCI #( .customId(8'h13)) gaussian
+                ( .start(s_cpu1CiStart),
+                  .clock(s_systemClock),
+                  .reset(s_cpuReset),
+                  .valueA(s_cpu1CiDataA),
+                  .valueB(s_cpu1CiDataB),
+                  .ciN(s_cpu1CiN),
+                  .done(s_gaussianDone),
+                  .result(s_gaussianResult));
 
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––

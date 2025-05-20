@@ -9,6 +9,7 @@
 #define NIOS_INSTR      "l.nios_rrr"
 #define CI_ID_rgb565ISE "0x11"
 #define CI_ID_sobel     "0x12"
+#define CI_ID_gaussian  "0x13"
 
 #define SOBEL_P0_LO  0
 #define SOBEL_P1_LO  8
@@ -26,6 +27,6 @@ void cam_rgb_2_gray(camParameters* camParams, volatile uint16_t* rgb565, volatil
 
 uint32_t asm_rgb_2_gray(uint32_t pixel1, uint32_t pixel2);
 void asm_sobel(const camParameters* camParams, volatile uint8_t* grayScale, volatile uint8_t* sobelOutput);
-
+void asm_gaussian(const camParameters* camParams, volatile uint8_t* grayScale, volatile uint8_t* blurOutput);
 #endif 
 
