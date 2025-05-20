@@ -44,7 +44,7 @@ int main() {
         }
 
         // Profiling read
-        asm_read_profiling(&profData, 1);
+        asm_read_profiling(&profData, 0);
     }
 
     return 0;

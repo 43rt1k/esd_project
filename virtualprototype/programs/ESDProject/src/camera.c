@@ -57,8 +57,8 @@ uint32_t asm_rgb_2_gray(uint32_t pixel1, uint32_t pixel2) {
 void asm_sobel(const camParameters* camParams, volatile uint8_t* grayScale, volatile uint8_t* sobelOutput) {
     int width = camParams->nrOfPixelsPerLine;
     int height = camParams->nrOfLinesPerImage;
-    for (int y = 1; y < height - 2; y++) {
-        for (int x = 1; x < width - 2; x++) {
+    for (int y = 1; y < height - 1; y++) {
+        for (int x = 1; x < width - 1; x++) {
             uint8_t p0 = grayScale[(y-1) * width + (x-1)];
             uint8_t p1 = grayScale[(y-1) * width + (x  )];
             uint8_t p2 = grayScale[(y-1) * width + (x+1)];
@@ -68,11 +68,22 @@ void asm_sobel(const camParameters* camParams, volatile uint8_t* grayScale, vola
             uint8_t p7 = grayScale[(y+1) * width + (x  )];
             uint8_t p8 = grayScale[(y+1) * width + (x+1)];
 
-            uint32_t valueA = (p3 << SOBEL_P3_LO) | (p2 << SOBEL_P2_LO) | (p1 << SOBEL_P1_LO) | (p0 << SOBEL_P0_LO);
-            uint32_t valueB = (p8 << SOBEL_P8_LO) | (p7 << SOBEL_P7_LO) | (p6 << SOBEL_P6_LO) | (p5 << SOBEL_P5_LO);
+            uint32_t valueA =   (p3 << SOBEL_P3_LO) | 
+                                (p2 << SOBEL_P2_LO) | 
+                                (p1 << SOBEL_P1_LO) | 
+                                (p0 << SOBEL_P0_LO);
+
+            uint32_t valueB =   (p8 << SOBEL_P8_LO) | 
+                                (p7 << SOBEL_P7_LO) | 
+                                (p6 << SOBEL_P6_LO) | 
+                                (p5 << SOBEL_P5_LO);
 
             uint32_t result;
-            asm volatile (NIOS_INSTR " %[out1],%[in1],%[in2]," CI_ID_sobel : [out1] "=r" (result) : [in1] "r" (valueA), [in2] "r" (valueB));
+            asm volatile (NIOS_INSTR " %[out1],%[in1],%[in2]," CI_ID_sobel 
+                            : [out1] "=r" (result) 
+                            : [in1] "r" (valueA), 
+                              [in2] "r" (valueB));
+
             sobelOutput[y * width + x] = result & 0xFF;
         }
     }

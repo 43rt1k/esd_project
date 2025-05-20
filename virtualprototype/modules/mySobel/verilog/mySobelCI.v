@@ -5,16 +5,15 @@
 `define HI 1'b1
 `define LO 1'b0
 
-module mySobelCI #(	parameter [7:0] 	 customId = 8'h0D)
-									( input  wire        start,
-										input  wire        clock,
-										input  wire        reset,
-										input  wire [31:0] valueA,    // p0 (7:0), p1 (15:8), p2 (23:16), p3 (31:24)
-										input  wire [31:0] valueB,    // p5 (7:0), p6 (15:8), p7 (23:16), p8 (31:24)
-										input  wire [7:0]  ciN,    // Custom instruction ID from the CPU
-
-										output wire        done,
-										output reg [31:0]  result);
+module mySobelCI #(	parameter [7:0]    customId = 8'h0D)
+                  ( input  wire        start,
+                    input  wire        clock,
+                    input  wire        reset,
+                    input  wire [31:0] valueA,    // p0 (7:0), p1 (15:8), p2 (23:16), p3 (31:24)
+                    input  wire [31:0] valueB,    // p5 (7:0), p6 (15:8), p7 (23:16), p8 (31:24)
+                    input  wire [7:0]  ciN,    // Custom instruction ID from the CPU
+                    output wire        done,
+                    output wire [31:0] result);
 	
 	//========================================================================
   // Controll Logic
@@ -29,10 +28,7 @@ module mySobelCI #(	parameter [7:0] 	 customId = 8'h0D)
 	localparam logic [10:0] MAG_MAX_11 = 11'd255;
 	localparam logic [10:0] MAG_MAX_8  = 8'd255;
 
-
-	
 	/* 	Pixel packing convention (excluding center):
-			
 	    p0   p1   p2     <- valueA[ 7:0], 	[15:8], 	[23:16]
 	    p3   p4   p5     <- valueA[31:24], 	ignored, 	valueB[ 7:0]
 	    p6   p7   p8     <- valueB[15:8], 	[23:16], 	[31:24]
@@ -88,17 +84,11 @@ module mySobelCI #(	parameter [7:0] 	 customId = 8'h0D)
 
 	wire [7:0] s_result = (magnitude > MAG_MAX_11) ? MAG_MAX_8 : magnitude[7:0];
 
-
-	//try to di with signed wire 
-
-	
 	//========================================================================
 	// Result and done logic
 	//========================================================================
 
-	always @(posedge clock)
-		if (reset || done == `LO) result <= 32'd0;
-		else result <= {24'd0, s_result};
+	assign result = (reset || done == `LO) ? 32'd0 : {24'd0, s_result};
 
 
 endmodule
