@@ -6,7 +6,7 @@
 #include <ov7670.h>
 
 #define NIOS_INSTR      "l.nios_rrr"
-#define CI_ID_profileCi "0x0B"
+#define CI_ID_profileCi "0x11"
 
 #define EC_0 0
 #define EC_1 1

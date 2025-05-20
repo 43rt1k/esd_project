@@ -36,7 +36,7 @@
 //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
 
-module myProfileCI #(  parameter[7:0]    customId = 8'h0B )
+module myProfileCI #(  parameter[7:0]    customId = 8'h10 )
                     (   input wire        start,    // Signal indicating a custom instruction is initiated
                                           clock,    // System clock
                                           reset,    // Global reset signal

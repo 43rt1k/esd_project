@@ -36,7 +36,7 @@
 //   single 32-bit result.
 //   The custom instruction is activated when the input ciN matches the parameter
 //   customId and the `start` signal is high.
-module myGrayscaleCI #(  parameter [7:0]      customId = 8'h0C )
+module myGrayscaleCI #(  parameter [7:0]      customId = 8'h11 )
                         ( input wire          start,    // Signal indicating custom instruction activation
                           input wire [31:0]   valueA,   // First 32-bit input; holds two RGB565 pixels
                                               valueB,   // Second 32-bit input; holds two RGB565 pixels

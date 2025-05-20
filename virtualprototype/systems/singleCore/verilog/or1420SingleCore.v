@@ -753,9 +753,8 @@ module or1420SingleCore ( input wire         clock12MHz,
   //===========================================================================
   // Custom Instructions
   //===========================================================================
-
   // A profile CI
-  myProfileCI #(.customId(8'h0B)) profiler 
+  myProfileCI #(.customId(8'h10)) profiler 
                (.start(s_cpu1CiStart),
                 .clock(s_systemClock),
                 .reset(s_cpuReset),
@@ -766,10 +765,8 @@ module or1420SingleCore ( input wire         clock12MHz,
                 .ciN(s_cpu1CiN),
                 .done(s_profileDone),
                 .result(s_profileResult) );
-
-
   // An rgb to grayscale CI
-  myGrayscaleCI #(.customId(8'h0C)) converter
+  myGrayscaleCI #(.customId(8'h11)) converter
                  (.start(s_cpu1CiStart),
                   .valueA(s_cpu1CiDataA),
                   .valueB(s_cpu1CiDataB),
@@ -777,8 +774,7 @@ module or1420SingleCore ( input wire         clock12MHz,
                   .done(s_grayDone),
                   .result(s_grayResult) );
 
-
-  mySobelCI #(.customId(8'h0D)) sobel
+  mySobelCI #(.customId(8'h12)) sobel
              (.start(s_cpu1CiStart),
               .clock(s_systemClock),
               .reset(s_cpuReset),

@@ -7,8 +7,8 @@
 #define IMAGE_SIZE (640*480)
 
 #define NIOS_INSTR      "l.nios_rrr"
-#define CI_ID_rgb565ISE "0x0C"
-#define CI_ID_sobel     "0x0D"
+#define CI_ID_rgb565ISE "0x11"
+#define CI_ID_sobel     "0x12"
 
 #define SOBEL_P0_LO  0
 #define SOBEL_P1_LO  8

@@ -5,7 +5,7 @@
 `define HI 1'b1
 `define LO 1'b0
 
-module mySobelCI #(	parameter [7:0]    customId = 8'h0D)
+module mySobelCI #(	parameter [7:0]    customId = 8'h12)
                   ( input  wire        start,
                     input  wire        clock,
                     input  wire        reset,
