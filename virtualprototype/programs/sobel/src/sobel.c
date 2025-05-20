@@ -4,14 +4,17 @@
 #include <vga.h>      // Header file for VGA display functions.
 
 #define __USING_rgb565ISE__
+
 //––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
-#define IMAGE_SIZE 640*480  // Image buffer size: 640 x 480 pixels.
+#define IMAGE_SIZE (640*480)  // Image buffer size: 640 x 480 pixels.
 
 #define NIOS_INSTR      "l.nios_rrr"    // Assembly mnemonic for issuing a custom instruction.
 #define CI_ID_profileCi "0x0B"          // Custom instruction ID for profiling-related actions.
-#define CI_ID_rgb565ISE "0x0C"          // Custom instruction ID for RGB565 to grayscale conversion.
-#define CI_ID_ыщиуд     "0x0D"          // Custom instruction ID for RGB565 to grayscale conversion.
+#define CI_ID_rgb565ISE "0x0C"          // Custom instruction ID for RGB565 to grayScale conversion.
+#define CI_ID_sobel     "0x0D"          // Custom instruction ID for Sobel edge detection.
+
+//–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
 // Define bit positions for controlling profiling counters:
 // Each bit enables/disables/resets a different profiling counter.
@@ -47,6 +50,19 @@
 #define COUNTER_RESET_0123_profileCi        ((1 << RC_0) | (1 << RC_1) | (1 << RC_2) | (1 << RC_3))
 
 //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+// Bit shift positions for pixel packing in Sobel CI
+#define SOBEL_P0_LO  0
+#define SOBEL_P1_LO  8
+#define SOBEL_P2_LO 16
+#define SOBEL_P3_LO 24
+
+#define SOBEL_P5_LO  0
+#define SOBEL_P6_LO  8
+#define SOBEL_P7_LO 16
+#define SOBEL_P8_LO 24
+
+//–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
 const uint8_t SEVEN_SEG[10] = {0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,0x7F,0x6F};
@@ -58,8 +74,8 @@ typedef struct {
     volatile uint32_t totalCycles;
 } ProfilingStatus;
 
-void cam_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* result, volatile ProfilingStatus* profData, volatile uint8_t* grayscale);
-void cam_rgb_2_gray(camParameters* camParams, volatile uint16_t* rgb565, volatile uint8_t* grayscale);
+void cam_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* result, volatile ProfilingStatus* profData, volatile uint8_t* camOutput);
+void cam_rgb_2_gray(camParameters* camParams, volatile uint16_t* rgb565, volatile uint8_t* grayScale);
 
 uint32_t gpio_get_DipSw(volatile unsigned int* gpio);
 void gpio_set_sevenSeg(volatile unsigned int* gpio, uint32_t value);
@@ -67,20 +83,21 @@ void gpio_set_sevenSeg(volatile unsigned int* gpio, uint32_t value);
 void asm_reset_profiling();
 void asm_enable_profiling_counters();
 void asm_read_profiling(volatile ProfilingStatus* profData, uint8_t ifPrintProf);
-void asm_rgb_2_gray(uint32_t pixel1, uint32_t pixel2, uint32_t* grayPixels);
-
+uint32_t asm_rgb_2_gray(uint32_t pixel1, uint32_t pixel2);
+void asm_sobel(const camParameters* camParams, volatile uint8_t* grayScale, volatile uint8_t* sobelOutput);
 //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-// Main function: capture images from the OV7670 camera and convert them to grayscale.
-// The grayscale images are displayed on a VGA monitor.
+// Main function: capture images from the OV7670 camera and convert them to grayScale.
+// The grayScale images are displayed on a VGA monitor.
 // The function also includes profiling code to measure performance metrics.
 // The function runs indefinitely, capturing and processing images in a loop.
 
 int main () {
     // Allocate a frame buffer to store the raw image in RGB565 format (16 bits per pixel)
     volatile uint16_t rgb565[IMAGE_SIZE];
-    // Allocate a frame buffer for the grayscale image (8 bits per pixel)
-    volatile uint8_t grayscale[IMAGE_SIZE];
+    // Allocate a frame buffer for the grayScale image (8 bits per pixel)
+    volatile uint8_t grayScale[IMAGE_SIZE];
+    volatile uint8_t sobelBuffer[IMAGE_SIZE];
     // VGA framebuffer pointer (memory-mapped I/O starting at 0x50000020)
     volatile unsigned int *vga = (unsigned int *) 0x50000020;
     // Memory-mapped GPIO (for dip switches and 7-seg)
@@ -91,7 +108,7 @@ int main () {
     volatile ProfilingStatus profData; // Structure to hold profiling results
 
     // Initialize camera and VGA display with resolution info
-    cam_init(&camParams, (unsigned int*)vga, &result, &profData, grayscale);
+    cam_init(&camParams, (unsigned int*)vga, &result, &profData, grayScale);
     // Reset profiling counters and enable total cycle counter
     asm_reset_profiling();
 
@@ -99,19 +116,18 @@ int main () {
     while(1) {
         // Block until one image is captured into rgb565 buffer
         takeSingleImageBlocking((uint32_t) &rgb565[0]);
-        
-    
-        
+                
         // Read 8-bit dip switch value (active-low XOR mask)
         uint32_t dipSwitch = gpio_get_DipSw(gpio);
         gpio_set_sevenSeg(gpio, dipSwitch);
 
-      
-      
         // Enable profiling for cycle, stall, and idle counters
         asm_enable_profiling_counters();
-        // Convert the RGB565 image to grayscale using either ISE or CPU fallback
-        cam_rgb_2_gray(&camParams, rgb565, grayscale);
+        // Convert the RGB565 image to grayScale using either ISE or CPU fallback
+        cam_rgb_2_gray(&camParams, rgb565, grayScale);
+
+        //asm_sobel(&camParams, grayScale, sobelBuffer);
+        printf("Sobel done!\n");
         // Read and print profiling statistics to terminal (if enabled)
         asm_read_profiling(&profData, 0);
     }
@@ -123,50 +139,41 @@ int main () {
 // Camera
 //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 // Camera initialization: configures camera, logs parameters, and prepares VGA overlay info
-void cam_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* result, volatile ProfilingStatus* profData, volatile uint8_t* grayscale) {
+void cam_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* result, volatile ProfilingStatus* profData, volatile uint8_t* camOutput) {
     vga_clear();  // Clear the VGA display memory (black screen)
-
     printf("Initialising camera (this takes up to 3 seconds)!\n");
-
     // Initialize the OV7670 camera with VGA resolution, and store parameters in camParams
     *camParams = initOv7670(VGA);
-
     printf("Done!\n");
-
     // Log horizontal resolution
     printf("NrOfPixels : %d\n", camParams->nrOfPixelsPerLine);
-
     // Encode resolution with 0x80000000 flag if it’s VGA (<= 320 px width), for use by VGA controller
     *result = (camParams->nrOfPixelsPerLine <= 320) ? 
               camParams->nrOfPixelsPerLine | 0x80000000 :
               camParams->nrOfPixelsPerLine;
 
     vga[0] = swap_u32(*result);  // Send to VGA controller (addressed at 0x50000020)
-
     // Log vertical resolution
     printf("NrOfLines  : %d\n", camParams->nrOfLinesPerImage);
-
     // Same flag logic for number of lines
     *result = (camParams->nrOfLinesPerImage <= 240) ? 
               camParams->nrOfLinesPerImage | 0x80000000 :
               camParams->nrOfLinesPerImage;
 
     vga[1] = swap_u32(*result);  // Send to VGA controller
-
     // Log camera performance
     printf("PCLK (kHz) : %d\n", camParams->pixelClockInkHz);
     printf("FPS        : %d\n", camParams->framesPerSecond);
-
-    // Set grayscale mode (magic value 2) and send grayscale buffer pointer
-    vga[2] = swap_u32(2);  // 2 = grayscale format
-    vga[3] = swap_u32((uint32_t)grayscale);  // Base address of grayscale image buffer
+    // Set camOutput mode (magic value 2) and send camOutput buffer pointer
+    vga[2] = swap_u32(2);  // 2 = camOutput format
+    vga[3] = swap_u32((uint32_t)camOutput);  // Base address of camOutput image buffer
 }
 
-// Converts RGB565 camera image to grayscale using ISE or software fallback
-void cam_rgb_2_gray(camParameters* camParams, volatile uint16_t* rgb565, volatile uint8_t* grayscale) {
+// Converts RGB565 camera image to grayScale using ISE or software fallback
+void cam_rgb_2_gray(camParameters* camParams, volatile uint16_t* rgb565, volatile uint8_t* grayScale) {
     uint32_t* rgb = (uint32_t*)rgb565;     // Recast RGB565 buffer for 32-bit access (2 pixels at a time)
-    uint32_t* gray = (uint32_t*)grayscale; // Output buffer: 4 grayscale pixels per 32-bit word
-    uint32_t grayPixels;                  // Temporarily stores converted grayscale pixels
+    uint32_t* gray = (uint32_t*)grayScale; // Output buffer: 4 grayScale pixels per 32-bit word
+    uint32_t grayPixels;                  // Temporarily stores converted grayScale pixels
 
     #ifdef __USING_rgb565ISE__
     // Optimized version using hardware ISE (Custom Instruction Extension)
@@ -174,15 +181,15 @@ void cam_rgb_2_gray(camParameters* camParams, volatile uint16_t* rgb565, volatil
         uint32_t pixel1 = rgb[pixel];     // Read 1st pixel pair (16-bit x 2 = 32-bit packed)
         uint32_t pixel2 = rgb[pixel + 1]; // Read 2nd pixel pair
 
-        // Use custom instruction to compute grayscale for 4 pixels (2x2 RGB565)
-        asm_rgb_2_gray(pixel1, pixel2, &grayPixels);
+        // Use custom instruction to compute grayScale for 4 pixels (2x2 RGB565)
+        grayPixels = asm_rgb_2_gray(pixel1, pixel2);
 
         gray[0] = grayPixels;  // Store result
-        gray++;                // Advance 32-bit grayscale pointer
+        gray++;                // Advance 32-bit grayScale pointer
     }
 
     #else
-    // Software fallback: manually convert each pixel to grayscale using weighted sum
+    // Software fallback: manually convert each pixel to grayScale using weighted sum
     for (int line = 0; line < camParams->nrOfLinesPerImage; line++) {
         for (int pixel = 0; pixel < camParams->nrOfPixelsPerLine; pixel++) {
             // Get and byte-swap RGB565 pixel
@@ -193,11 +200,11 @@ void cam_rgb_2_gray(camParameters* camParams, volatile uint16_t* rgb565, volatil
             uint32_t green1 = ((pixelVal >> 5)  & 0x3F) << 2; // 6 bits -> 8 bits
             uint32_t blue1  = (pixelVal & 0x1F) << 3;         // 5 bits -> 8 bits
 
-            // Apply weighted grayscale formula: 0.21 R + 0.72 G + 0.07 B
+            // Apply weighted grayScale formula: 0.21 R + 0.72 G + 0.07 B
             uint32_t grayVal = ((red1 * 54 + green1 * 183 + blue1 * 19) >> 8) & 0xFF;
 
-            // Store grayscale value
-            grayscale[line * camParams->nrOfPixelsPerLine + pixel] = grayVal;
+            // Store grayScale value
+            grayScale[line * camParams->nrOfPixelsPerLine + pixel] = grayVal;
         }
     }
     #endif
@@ -277,15 +284,64 @@ void asm_read_profiling(volatile ProfilingStatus* profData, uint8_t ifPrintProf)
 }
 
 //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-// Hardware-accelerated RGB565 to grayscale conversion via ISE
+// Hardware-accelerated RGB565 to grayScale conversion via ISE
 // Each 32-bit input pixel contains 2 RGB565 pixels
-// The ISE outputs a 32-bit word holding 4 8-bit grayscale pixels
+// The ISE outputs a 32-bit word holding 4 8-bit grayScale pixels
 //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
-void asm_rgb_2_gray(uint32_t pixel1, uint32_t pixel2, uint32_t* grayPixels) {
+uint32_t asm_rgb_2_gray(uint32_t pixel1, uint32_t pixel2) {
+    uint32_t result;
+
     asm volatile (NIOS_INSTR " %[out1],%[in1],%[in2]," CI_ID_rgb565ISE
-                  : [out1] "=r" (*grayPixels)
+                  : [out1] "=r" (result)
                   : [in1] "r" (pixel1),
                     [in2] "r" (pixel2));
+
+    return result;
 }
 
+//–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+// Sobel Ci
+//–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+
+void asm_sobel(const camParameters* camParams, volatile uint8_t* grayScale, volatile uint8_t* sobelOutput) {
+    int width = camParams->nrOfPixelsPerLine;
+    int height = camParams->nrOfLinesPerImage;
+
+    for (int y = 1; y < height - 2; y++) {
+        for (int x = 1; x < width - 2; x++) {
+
+            // Coordinates of 3x3 window around pixel (x,y)
+            uint8_t p0 = grayScale[(y-1) * width + (x-1)];
+            uint8_t p1 = grayScale[(y-1) * width + (x  )];
+            uint8_t p2 = grayScale[(y-1) * width + (x+1)];
+            uint8_t p3 = grayScale[(y  ) * width + (x-1)];
+            // p4 = center, not needed
+            uint8_t p5 = grayScale[(y  ) * width + (x+1)];
+            uint8_t p6 = grayScale[(y+1) * width + (x-1)];
+            uint8_t p7 = grayScale[(y+1) * width + (x  )];
+            uint8_t p8 = grayScale[(y+1) * width + (x+1)];
+
+            uint32_t valueA =   (p3 << SOBEL_P3_LO) |
+                                (p2 << SOBEL_P2_LO) |
+                                (p1 << SOBEL_P1_LO) |
+                                (p0 << SOBEL_P0_LO);
+
+            uint32_t valueB =   (p8 << SOBEL_P8_LO) |
+                                (p7 << SOBEL_P7_LO) |
+                                (p6 << SOBEL_P6_LO) |
+                                (p5 << SOBEL_P5_LO);
+
+            uint32_t result;
+
+            asm volatile (NIOS_INSTR " %[out1],%[in1],%[in2]," CI_ID_sobel
+                            : [out1] "=r" (result)
+                            : [in1] "r" (valueA),
+                              [in2] "r" (valueB)
+            );
+            printf("result: %x\n", result);
+            sobelOutput[y * width + x] = result & 0xFF;
+        }
+    }
+
+}

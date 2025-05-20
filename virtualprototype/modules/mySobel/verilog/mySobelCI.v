@@ -89,7 +89,9 @@ module mySobelCI #(	parameter [7:0] 	 customId = 8'h0D)
 	wire [7:0] s_result = (magnitude > MAG_MAX_11) ? MAG_MAX_8 : magnitude[7:0];
 
 
+	//try to di with signed wire 
 
+	
 	//========================================================================
 	// Result and done logic
 	//========================================================================
