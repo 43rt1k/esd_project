@@ -158,7 +158,7 @@ module or1420SingleCore ( input wire         clock12MHz,
   //===========================================================================
   wire        s_GpioEndTransaction, s_GpioDataValid, s_GpioBusError;
   wire [31:0] s_GpioAddressData;
-  wire [23:0] s_threeDigits;
+  wire [23:0] s_III_Digits;
   //===========================================================================
   // Assignments
   //===========================================================================
@@ -725,7 +725,7 @@ module or1420SingleCore ( input wire         clock12MHz,
           .reset(s_cpuReset),
 
           .externalInputs(nDipSwitch),
-          .externalOutputs(s_threeDigits),
+          .externalOutputs(s_III_Digits),
 
           // ← INPUTS DIRECT FROM CPU
           .addressDataIn(s_addressData),
@@ -746,7 +746,7 @@ module or1420SingleCore ( input wire         clock12MHz,
 
   sevenSegShow scan7segs (.clock(s_systemClock),
                           .reset(s_cpuReset),
-                          .threeDigits(s_threeDigits),
+                          .s_III_Digits(s_III_Digits),
                           .displaySelect(displaySelect),
                           .nSegments(nSegments));
 
