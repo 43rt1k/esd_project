@@ -1,2 +1,2 @@
-build-release/src/memory.c.o: src/memory.c src/memory.h \
- support/include/stdint.h
+build-release/src/memory.c.o: src/memory.c support/include/stdio.h \
+ support/include/printf.h src/memory.h support/include/stdint.h

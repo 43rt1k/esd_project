@@ -1,0 +1,548 @@
+$date
+	Sun May 25 01:36:33 2025
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1ps
+$end
+$scope module myDmaRam_tb $end
+$var wire 32 ! result [31:0] $end
+$var wire 1 " requestTransaction $end
+$var wire 1 # readNotWriteOut $end
+$var wire 1 $ done $end
+$var wire 4 % byteEnablesOut [3:0] $end
+$var wire 8 & burstSizeOut [7:0] $end
+$var wire 1 ' beginTransactionOut $end
+$var wire 32 ( addressDataOut [31:0] $end
+$var reg 32 ) addressDataIn [31:0] $end
+$var reg 1 * busErrorIn $end
+$var reg 8 + ciN [7:0] $end
+$var reg 1 , clk $end
+$var reg 1 - dataValidIn $end
+$var reg 1 . endTransactionIn $end
+$var reg 1 / reset $end
+$var reg 1 0 start $end
+$var reg 1 1 transactionGranted $end
+$var reg 32 2 valueA [31:0] $end
+$var reg 32 3 valueB [31:0] $end
+$scope module dut $end
+$var wire 1 4 _controlBits $end
+$var wire 32 5 addressDataIn [31:0] $end
+$var wire 1 * busErrorIn $end
+$var wire 8 6 ciN [7:0] $end
+$var wire 1 , clock $end
+$var wire 1 - dataValidIn $end
+$var wire 1 $ done $end
+$var wire 1 . endTransactionIn $end
+$var wire 1 / reset $end
+$var wire 32 7 result [31:0] $end
+$var wire 1 8 s_dmaDone $end
+$var wire 1 9 s_isMyCi $end
+$var wire 1 : s_isSramWrite $end
+$var wire 1 ; s_ramCiWriteEnable $end
+$var wire 1 < s_requestDmaIn $end
+$var wire 1 = s_transCompleted $end
+$var wire 1 0 start $end
+$var wire 1 1 transactionGranted $end
+$var wire 32 > valueA [31:0] $end
+$var wire 32 ? valueB [31:0] $end
+$var wire 8 @ s_usedBurstSize [7:0] $end
+$var wire 32 A s_sramDataValue [31:0] $end
+$var wire 1 B s_dmaWrite $end
+$var wire 1 C s_dmaIsAddrLO $end
+$var wire 3 D s_dmaConfig [2:0] $end
+$var wire 9 E s_dmaAddrCI [8:0] $end
+$var wire 1 " requestTransaction $end
+$var wire 8 F _restingBlockSize [7:0] $end
+$var wire 8 G _maxBurstSize [7:0] $end
+$var parameter 32 H ADDR_BYTE_INC $end
+$var parameter 9 I ADDR_RAM_INC $end
+$var parameter 3 J BLOCK_SIZE $end
+$var parameter 3 K BURST_SIZE $end
+$var parameter 3 L BUS_START_ADDR $end
+$var parameter 4 M BYTE_HI_ALL $end
+$var parameter 32 N CF_HI_B $end
+$var parameter 32 O CF_LO_B $end
+$var parameter 32 P DMA_HI_B $end
+$var parameter 32 Q DMA_LO_B $end
+$var parameter 3 R DO_READ $end
+$var parameter 3 S IDLE $end
+$var parameter 3 T INIT $end
+$var parameter 3 U MEM_DATA $end
+$var parameter 3 V MEM_START_ADDR $end
+$var parameter 3 W REQUEST_BUS $end
+$var parameter 3 X SET_UP_TRANS $end
+$var parameter 10 Y SINGLE_BLOCK $end
+$var parameter 2 Z START_BUS_TO_MEM $end
+$var parameter 2 [ START_MEM_TO_BUT $end
+$var parameter 3 \ STATUS_R $end
+$var parameter 3 ] WAIT_END $end
+$var parameter 32 ^ WRITE_B $end
+$var parameter 8 _ customId $end
+$var reg 32 ` addressDataOut [31:0] $end
+$var reg 1 ' beginTransactionOut $end
+$var reg 8 a burstSizeOut [7:0] $end
+$var reg 4 b byteEnablesOut [3:0] $end
+$var reg 32 c r_AddrDataIn [31:0] $end
+$var reg 32 d r_blockSize [31:0] $end
+$var reg 10 e r_blockSizeShad [9:0] $end
+$var reg 1 f r_busError $end
+$var reg 32 g r_busStartAddr [31:0] $end
+$var reg 32 h r_busStartAddrShad [31:0] $end
+$var reg 1 i r_dataValidIn $end
+$var reg 3 j r_dmaNextState [2:0] $end
+$var reg 3 k r_dmaState [2:0] $end
+$var reg 1 l r_endTransIn $end
+$var reg 1 m r_isSramRead $end
+$var reg 32 n r_memoryStartAddr [31:0] $end
+$var reg 9 o r_ramCiAddr [8:0] $end
+$var reg 32 p r_result [31:0] $end
+$var reg 32 q r_usedBurstSize [31:0] $end
+$var reg 1 # readNotWriteOut $end
+$scope module memory $end
+$var wire 9 r addressA [8:0] $end
+$var wire 9 s addressB [8:0] $end
+$var wire 1 , clockA $end
+$var wire 1 t clockB $end
+$var wire 32 u dataInA [31:0] $end
+$var wire 32 v dataInB [31:0] $end
+$var wire 1 : writeEnableA $end
+$var wire 1 ; writeEnableB $end
+$var parameter 32 w bitwidth $end
+$var parameter 32 x nrOfEntries $end
+$var reg 32 y dataOutA [31:0] $end
+$var reg 32 z dataOutB [31:0] $end
+$upscope $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+b1000000000 x
+b100000 w
+b10100 _
+b1001 ^
+b101 ]
+b101 \
+b10 [
+b1 Z
+b1 Y
+b11 X
+b10 W
+b10 V
+b0 U
+b1 T
+b0 S
+b100 R
+b0 Q
+b1 P
+b1010 O
+b1100 N
+b1111 M
+b1 L
+b100 K
+b11 J
+b1 I
+b100 H
+$end
+#0
+$dumpvars
+bx z
+bx y
+bx v
+b0 u
+1t
+bx s
+b0 r
+bx q
+b0 p
+bx o
+bx n
+xm
+xl
+b0 k
+bx j
+xi
+bx h
+bx g
+0f
+bx e
+bx d
+bx c
+bx b
+bx a
+bx `
+bx G
+bx F
+b0 E
+b0 D
+1C
+0B
+bx A
+bx @
+b0 ?
+b0 >
+x=
+0<
+0;
+0:
+09
+x8
+b0 7
+b10100 6
+b10010001101000101011001111000 5
+04
+b0 3
+b0 2
+01
+00
+1/
+0.
+0-
+0,
+b10100 +
+0*
+b10010001101000101011001111000 )
+bx (
+x'
+bx &
+bx %
+x$
+x#
+0"
+b0 !
+$end
+#5000
+b1 G
+0$
+0=
+0m
+b0 q
+b0 d
+b0 n
+b0 g
+b10010001101000101011001111000 c
+b10010001101000101011001111000 v
+0i
+0l
+b0 (
+b0 `
+b0 &
+b0 a
+b0 %
+b0 b
+0#
+0'
+b0 j
+0t
+1,
+#10000
+1t
+0,
+#15000
+b11111111 @
+b11111111 F
+18
+b0 o
+b0 s
+b0 e
+b0 h
+0t
+1,
+#20000
+1t
+0,
+0/
+#25000
+0t
+1,
+#30000
+1:
+1$
+1t
+19
+b1 D
+1B
+0,
+10
+b1110000000000000 3
+b1110000000000000 ?
+b1110000000000000 u
+b11000000000 2
+b11000000000 >
+#35000
+b1110000000000000 g
+0t
+1,
+#40000
+b1110000000000000 z
+0:
+0$
+1t
+09
+0,
+00
+#45000
+b1110000000000000 A
+b1110000000000000 y
+b1110000000000000 h
+0t
+1,
+#50000
+1t
+0,
+#55000
+0t
+1,
+#60000
+1:
+1$
+1t
+19
+b10 D
+0,
+10
+b0 3
+b0 ?
+b0 u
+b101000000000 2
+b101000000000 >
+#65000
+0t
+1,
+#70000
+b0 z
+0:
+0$
+1t
+09
+0,
+00
+#75000
+b0 A
+b0 y
+0t
+1,
+#80000
+1t
+0,
+#85000
+0t
+1,
+#90000
+1:
+1$
+1<
+14
+1t
+19
+b101 D
+0,
+10
+b1 3
+b1 ?
+b1 u
+b1011000000000 2
+b1011000000000 >
+#95000
+b1 j
+0t
+1,
+#100000
+b1 z
+b1 k
+1t
+0,
+#105000
+b1 A
+b1 y
+b10 j
+0t
+1,
+#110000
+1"
+b10 k
+0<
+0:
+0$
+1t
+09
+0,
+00
+#115000
+0t
+1,
+#120000
+1t
+0,
+#125000
+0t
+1,
+#130000
+1t
+0,
+#135000
+0t
+1,
+#140000
+1t
+0,
+#145000
+0t
+1,
+#150000
+1t
+0,
+#155000
+0t
+1,
+#160000
+1t
+0,
+11
+#165000
+b11 j
+0t
+1,
+#170000
+0"
+b11 k
+1t
+0,
+#175000
+b100 j
+b1110000000000000 (
+b1110000000000000 `
+b11111111 &
+b11111111 a
+b1111 %
+b1111 b
+1#
+1'
+0t
+1,
+#180000
+b100 k
+1t
+0,
+01
+#185000
+b0 (
+b0 `
+b0 &
+b0 a
+b0 %
+b0 b
+0#
+0'
+0t
+1,
+#190000
+1t
+0,
+#195000
+0t
+1,
+#200000
+1t
+0,
+1.
+1-
+#205000
+1;
+1=
+1i
+1l
+0t
+1,
+#210000
+1t
+0,
+0.
+0-
+#215000
+b11111110 F
+b0 @
+08
+0;
+0=
+b0 j
+b1 o
+b1 s
+b1111111111 e
+b1110000000000100 h
+0i
+0l
+b10010001101000101011001111000 A
+b10010001101000101011001111000 y
+0t
+1,
+#220000
+bx z
+b0 k
+1t
+0,
+#225000
+b11111111 F
+b11111111 @
+18
+b0 o
+b0 s
+b0 e
+b1110000000000000 h
+0t
+1,
+#230000
+b10010001101000101011001111000 z
+1t
+0,
+#235000
+0t
+1,
+#240000
+1t
+0,
+#245000
+0t
+1,
+#250000
+1t
+0,
+#255000
+0t
+1,
+#260000
+1t
+0,
+#265000
+0t
+1,
+#270000
+1t
+0,
+#275000
+0t
+1,
+#280000
+1t
+0,
+#285000
+0t
+1,
+#290000
+1t
+0,
+#295000
+0t
+1,
+#300000
+1t
+0,
+#305000
+0t
+1,
+#310000
+1t
+0,

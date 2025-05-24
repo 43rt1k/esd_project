@@ -5,7 +5,7 @@
 #include "memory.h"
 #include "swap.h"
 
-#define __WITH_DMA__
+
 
 int main() {
     // Frame buffers
@@ -25,11 +25,10 @@ int main() {
     // Initialization
     cam_init(&camParams, (unsigned int*)vga, &result, sobelBuffer);
     asm_reset_profiling();
-    #ifdef __WITH_DMA__  
-    /* set up the generic dma parameters */
-    asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE); // Set DMA block size
-    asm_DMA_W(DMA_BURST_SIZE, DMA_USED_BURST_SIZE); // Set DMA burst size
-    #endif
+
+
+    DMA_init();
+
 
     uint32_t grayPixels;
     uint32_t pixel1, pixel2;
@@ -46,69 +45,73 @@ int main() {
         asm_enable_profiling_counters();
 
 
-        #ifdef __WITH_DMA__
-
         uint32_t dmaBuffer = 0; // DMA buffer index
         uint32_t workBuffer = DMA_USED_BLOCK_SIZE; // Working buffer index
         uint32_t status; // DMA status
-        uint32_t p_rgb = (uint32_t) &rgb565[0];
-        uint32_t p_gray = (uint32_t) &grayScale[0];
-        /* perform the first initial DMA */
+        uint32_t p_rgb = (uint32_t)(uintptr_t)&rgb565[0];
+        uint32_t p_gray = (uint32_t)(uintptr_t) &grayScale[0];
+
+
+        // perform the first initial DMA 
         asm_DMA_W(DMA_BUS_START_ADDR, p_rgb); // Set DMA bus start address
+
         p_rgb += DMA_USED_BLOCK_SIZE * WORD_SIZE_BYTES; // Increment pointer
         asm_DMA_W(DMA_MEM_START_ADDR, dmaBuffer); // Set DMA memory start address
-        asm_DMA_W(DMA_STATUS_CONTROL, DMA_START_BUS_TO_MEM); // Start DMA bus-to-memory transfer
+        asm_DMA_W(DMA_STATUS_R, DMA_START_BUS_TO_MEM); // Start DMA bus-to-memory transfer
 
-        asm_DMA_wait_end(&status); // Wait for DMA transfer to complete
+        asm_DMA_wait_end(); // Wait for DMA transfer to complete
+        printf("DMA transfer completed.\n");
 
-        for (int i = 0 ; i < DMA_TOTAL_BLOCKS; i++) {
-        /* swap buffers */
-        status = dmaBuffer; // Swap DMA buffers
-        dmaBuffer = workBuffer;
-        workBuffer = status;
+          for (int i = 0 ; i < DMA_TOTAL_BLOCKS; i++) {
+            // swap buffers 
+            status = dmaBuffer; // Swap DMA buffers
+            dmaBuffer = workBuffer;
+            workBuffer = status;
+            printf("Swapped buffers: dmaBuffer = %u, workBuffer = %u\n", dmaBuffer, workBuffer);
+            printf("Processing DMA block %d\n", i);
+            // perform DMA in 
+            if (i < (DMA_TOTAL_BLOCKS - 1)) {
+                asm_DMA_W(DMA_BUS_START_ADDR, p_rgb); // Set DMA bus start address
 
-        /* perform DMA in */
-        if (i < (DMA_TOTAL_BLOCKS - 1)) {
-            asm_DMA_W(DMA_BUS_START_ADDR, p_rgb); // Set DMA bus start address
+                p_rgb += DMA_USED_BLOCK_SIZE * WORD_SIZE_BYTES; // Increment pointer
 
-            p_rgb += DMA_USED_BLOCK_SIZE * WORD_SIZE_BYTES; // Increment pointer
+                asm_DMA_W(DMA_MEM_START_ADDR, dmaBuffer); // Set DMA memory start address
+                
+                asm_DMA_W(DMA_STATUS_R, DMA_START_BUS_TO_MEM); // Start DMA bus-to-memory transfer
+            }
 
-            asm_DMA_W(DMA_MEM_START_ADDR, dmaBuffer); // Set DMA memory start address
+            // perform transformation 
+            for (uint16_t pixel = 0 ; pixel < DMA_USED_BLOCK_SIZE ; pixel += 2) {
+
+                asm_DMA_R(&pixel1, workBuffer + pixel); // Read pixel1 from DMA buffer
+                asm_DMA_R(&pixel2, workBuffer + pixel + 1); // Read pixel2 from DMA buffer
+
+                pixel1 = swap_u32(pixel1); // Swap byte order of pixel1
+                pixel2 = swap_u32(pixel2); // Swap byte order of pixel2
+
+                grayPixels = asm_rgb_2_gray(pixel1, pixel2); // Convert RGB565 to grayscale
+                grayPixels = swap_u32(grayPixels); // Swap byte order of grayscale pixels
+                asm_DMA_W((workBuffer+(pixel>>1)), grayPixels); // Write grayscale pixels to DMA buffer
+            }
+
+
+            asm_DMA_wait_end(); // Wait for DMA transfer to complete
+
+            // perform DMA out 
+            asm_DMA_W(DMA_BUS_START_ADDR, p_gray); // Set DMA bus start address
+
+            p_gray += (DMA_USED_BLOCK_SIZE << WORD_TO_BYTES_SHIFT); // Increment pointer
+
+            asm_DMA_W(DMA_BLOCK_SIZE, (DMA_USED_BLOCK_SIZE >> WORD_TO_BYTES_SHIFT)); // Set DMA block size
+            asm_DMA_W(DMA_MEM_START_ADDR, workBuffer); // Set DMA memory start address
+            asm_DMA_W(DMA_STATUS_R, DMA_START_MEM_TO_BUS); // Start DMA memory-to-bus transfer
+
+            asm_DMA_wait_end(); // Wait for DMA transfer to complete
             
-            asm_DMA_W(DMA_STATUS_CONTROL, DMA_START_BUS_TO_MEM); // Start DMA bus-to-memory transfer
-        }
-
-        /* perform transformation */
-        for (uint16_t pixel = 0 ; pixel < DMA_USED_BLOCK_SIZE ; pixel += 2) {
-
-            asm_DMA_R(&pixel1, workBuffer + pixel); // Read pixel1 from DMA buffer
-            asm_DMA_R(&pixel2, workBuffer + pixel + 1); // Read pixel2 from DMA buffer
-
-            pixel1 = swap_u32(pixel1); // Swap byte order of pixel1
-            pixel2 = swap_u32(pixel2); // Swap byte order of pixel2
-
-            grayPixels = asm_rgb_2_gray(pixel1, pixel2); // Convert RGB565 to grayscale
-            grayPixels = swap_u32(grayPixels); // Swap byte order of grayscale pixels
-            asm_DMA_W((workBuffer+(pixel>>1)), grayPixels); // Write grayscale pixels to DMA buffer
+            asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE); // Reset DMA block size
         }
 
 
-        asm_DMA_wait_end(&status); // Wait for DMA transfer to complete
-
-        /* perform DMA out */
-        asm_DMA_W(DMA_BUS_START_ADDR, p_gray); // Set DMA bus start address
-
-        p_gray += (DMA_USED_BLOCK_SIZE << WORD_TO_BYTES_SHIFT); // Increment pointer
-
-        asm_DMA_W(DMA_BLOCK_SIZE, (DMA_USED_BLOCK_SIZE >> WORD_TO_BYTES_SHIFT)); // Set DMA block size
-        asm_DMA_W(DMA_MEM_START_ADDR, workBuffer); // Set DMA memory start address
-        asm_DMA_W(DMA_STATUS_CONTROL, DMA_START_MEM_TO_BUS); // Start DMA memory-to-bus transfer
-
-        asm_DMA_wait_end(&status); // Wait for DMA transfer to complete
-        
-        asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE); // Reset DMA block size
-        }
-        #endif // __WITH_DMA__
 
         // RGB565 -> grayscale
         cam_rgb_2_gray(&camParams, rgb565, grayScale);
@@ -130,3 +133,9 @@ int main() {
 
     return 0;
 }
+
+
+/*
+      
+
+*/

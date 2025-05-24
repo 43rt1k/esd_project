@@ -1,7 +1,12 @@
-`define HI 1'b1;  
-`define LO 1'b0;
+`define HI     1'b1  
+`define LO     1'b0
+`define LO_4   4'b0
+`define LO_8   8'b0
+`define LO_10 10'b0
+`define LO_22 22'b0
+`define LO_30 30'b0
+`define LO_32 32'b0
 
-`define LO_(value) (value)'d0
 
 
 module myDmaRam #( parameter [7:0]    customId = 8'h14 )
@@ -21,6 +26,7 @@ module myDmaRam #( parameter [7:0]    customId = 8'h14 )
                    input wire         endTransactionIn,
                                       dataValidIn,
                                       busErrorIn,
+                                      busyIn,
                    input wire [31:0]  addressDataIn,
                    output reg         beginTransactionOut,
                    output reg         readNotWriteOut,
@@ -33,9 +39,7 @@ module myDmaRam #( parameter [7:0]    customId = 8'h14 )
   //===============================================================================================
 
   // Address bit ranges for various purposes
-  localparam       LO_ADDR_HI_B       = 31,  // Highest bit of address bus
-                   LO_ADDR_LO_B       = 10,  // Lowest bit used for address indexing
-                   CF_HI_B            = 12, // High bit for DMA configuration field in address
+  localparam       CF_HI_B            = 12, // High bit for DMA configuration field in address
                    CF_LO_B            = 10, // High bit for DMA configuration field in address
                    WRITE_B            = 9;  // Bit position indicating write operation in address
   // Localparam for read register selection - defines which register is accessed
@@ -45,6 +49,7 @@ module myDmaRam #( parameter [7:0]    customId = 8'h14 )
                    BLOCK_SIZE         = 3'b011,
                    BURST_SIZE         = 3'b100,
                    STATUS_R           = 3'b101;
+
   // DMA controller FSM states (3-bit encoding)
   localparam [2:0] IDLE               = 3'd0,
                    INIT               = 3'd1,
@@ -52,6 +57,7 @@ module myDmaRam #( parameter [7:0]    customId = 8'h14 )
                    SET_UP_TRANS       = 3'd3,
                    DO_READ            = 3'd4,
                    WAIT_END           = 3'd5;
+
   // Control bits for DMA direction
   localparam [1:0] START_BUS_TO_MEM   = 2'b01, // Start DMA from bus to memory
                    START_MEM_TO_BUT   = 2'b10; // Start DMA from memory to bus (likely typo 'BUT' means 'BUS')
@@ -85,13 +91,12 @@ module myDmaRam #( parameter [7:0]    customId = 8'h14 )
   // Assigns
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+  assign s_dmaConfig      = valueA[CF_HI_B:CF_LO_B];           // Extract DMA configuration field from valueA (bits 12:10)
+  assign s_dmaWrite       = valueA[WRITE_B];                   // Write operation flag from valueA (bit 9)
+  assign s_dmaAddrCI      = valueA[8:0];                       // Address for custom instruction SRAM access (bits 8:0)
+  assign s_dmaIsAddrLO    = (valueA[31:CF_HI_B+1] == `LO_22);  // Check if address bits [31:10] are all zero (indicates local access)
 
-  assign s_dmaConfig      = valueA[CF_HI_B:CF_LO_B];
-  assign s_dmaWrite       = valueA[WRITE_B];
-  assign s_dmaAddrCI      = valueA[8:0];
-
-  assign s_dmaIsAddrLO    = (valueA[LO_ADDR_HI_B:LO_ADDR_LO_B] == `LO_(LO_ADDR_HI_B - LO_ADDR_LO_B + 1));
-  assign result           = r_result;
+  assign result           = r_result;                          // Output result register to result port
 
   //=============================================================
   // CI Logic
@@ -100,21 +105,22 @@ module myDmaRam #( parameter [7:0]    customId = 8'h14 )
   assign s_isMyCi       = start && (ciN == customId);
   assign s_isSramWrite  = s_dmaIsAddrLO && s_isMyCi && s_dmaWrite;
   assign done           = (s_isMyCi & s_dmaWrite) | r_isSramRead;
-  
+
+
   // Read request for custom instruction interface
   always @(posedge clock) 
       if (reset)         begin r_isSramRead <= `LO;           end 
-      else if (s_isMyCi) begin r_isSramRead <= (~s_dmaWrite); end
+      else if (s_isMyCi) begin r_isSramRead <= (~s_isSramWrite); end
 
   // Configuration registers on write from custom instruction interface
   always @(posedge clock) begin
     if (reset) begin
-                        r_busStartAddr    <= `LO_(32);
-                        r_memoryStartAddr <= `LO_(32);
-                        r_blockSize       <= `LO_(32);
-                        r_usedBurstSize   <= `LO_(32);
+                        r_busStartAddr    <= `LO_32;
+                        r_memoryStartAddr <= `LO_32;
+                        r_blockSize       <= `LO_32;
+                        r_usedBurstSize   <= `LO_32;
 
-    end else if (s_isMyCi && s_dmaWrite)
+    end else if (s_isSramWrite)
       case (s_dmaConfig)
         BUS_START_ADDR: r_busStartAddr         <= valueB;
         MEM_START_ADDR: r_memoryStartAddr[8:0] <= valueB[8:0];
@@ -124,7 +130,7 @@ module myDmaRam #( parameter [7:0]    customId = 8'h14 )
   end
 
   // Result register based on readback selection
-  always @(posedge clock)
+  always @*
     if (r_isSramRead)
       case (s_dmaConfig)
         MEM_DATA:         r_result <= s_sramDataValue;
@@ -132,49 +138,38 @@ module myDmaRam #( parameter [7:0]    customId = 8'h14 )
         MEM_START_ADDR:   r_result <= r_memoryStartAddr;
         BLOCK_SIZE:       r_result <= r_blockSize;
         BURST_SIZE:       r_result <= r_usedBurstSize;
-        STATUS_R:         r_result <= {`LO_(30), r_busError, ~(r_dmaState != IDLE)};
-        default:          r_result <= `LO_(32);
+        STATUS_R:         r_result <= {`LO_30, r_busError, ~(r_dmaState == IDLE)};
+        default:          r_result <= `LO_32;
       endcase
     else
-      r_result <= `LO_(32);
+      r_result <= `LO_32;
 
   //=============================================================
   // BUS Logic
   //=============================================================
 
-  wire[7:0]_maxBurstSize     = {2'd0, r_usedBurstSize[7:0]} + SINGLE_BLOCK;
-  wire[7:0]_restingBlockSize = r_blockSizeShad - SINGLE_BLOCK;
-  assign s_usedBurstSize    = (r_blockSizeShad > _maxBurstSize) ? r_usedBurstSize[7:0] :  _restingBlockSize[7:0];
+  wire [7:0]  _maxBurstSize      = {2'd0, r_usedBurstSize[7:0]} + SINGLE_BLOCK; // Calculate the maximum burst size (used for burst transfers)
+  wire [7:0]  _restingBlockSize  = r_blockSizeShad - SINGLE_BLOCK;              // Calculate the remaining block size after a burst
+  assign      s_usedBurstSize    = (r_blockSizeShad > _maxBurstSize) ? r_usedBurstSize[7:0] : _restingBlockSize[7:0]; // Select the burst size to use for the current transaction
 
-  assign requestTransaction = r_dmaState == REQUEST_BUS;
+  assign      requestTransaction = (r_dmaState == REQUEST_BUS);                 // Assert requestTransaction when the DMA FSM is in the REQUEST_BUS state
 
-  wire[2:0]_controlBits      = valueB[DMA_HI_B:DMA_LO_B];
-  wire[2:0]_controlBitsValid = (_controlBits == START_BUS_TO_MEM) || (_controlBits == START_MEM_TO_BUT);
+  wire        _controlBits  = (valueB[DMA_HI_B:DMA_LO_B] == START_BUS_TO_MEM) || 
+                              (valueB[DMA_HI_B:DMA_LO_B] == START_MEM_TO_BUT); // Check if control bits indicate a valid DMA direction
 
-  assign s_requestDmaIn     = (s_dmaConfig == STATUS_R) && s_isMyCi && _controlBitsValid && valueB[0];
-  assign s_dmaDone          = (r_blockSizeShad == `LO_(10)) || ((r_blockSizeShad == SINGLE_BLOCK) && r_endTransIn && r_dataValidIn);
-  assign s_ramCiWriteEnable = (r_dmaState == DO_READ) && r_dataValidIn;
-  assign s_transCompleted   = r_endTransIn && s_dmaDone;
+  assign      s_requestDmaIn     = (s_dmaConfig == STATUS_R) && s_isMyCi && valueB[0] && _controlBits; // Assert s_requestDmaIn when a valid DMA request is detected via CI
+  assign      s_dmaDone          = (r_blockSizeShad == `LO_10) || ((r_blockSizeShad == SINGLE_BLOCK) && r_dataValidIn); // DMA done when all blocks are transferred or last block is completed
+  assign      s_ramCiWriteEnable = (r_dmaState == DO_READ) && r_dataValidIn;   // Enable SRAM write from DMA when in DO_READ state and data is valid
+  assign      s_transCompleted   = r_endTransIn && s_dmaDone;                  // Transaction is completed when endTransactionIn is asserted and DMA is done
 
-  always @(posedge clock) 
-    if (reset) begin
-      r_dmaState <= IDLE;
-      r_busError <= `LO;
-    end else begin
-      
-      r_dmaState <= r_dmaNextState;
-      if      (r_dmaState == INIT)     begin r_busError <= `LO; end 
-      else if (r_dmaState == WAIT_END) begin r_busError <= `HI; end
-    end
-    
-
-
+  // Latch bus interface signals on each clock
   always @(posedge clock) begin
     r_endTransIn  <= endTransactionIn;
     r_dataValidIn <= dataValidIn;
     r_AddrDataIn  <= addressDataIn;
   end
 
+  // Shadow registers for burst/block management and address incrementing
   always @(posedge clock) begin
     if (r_dmaState == IDLE) begin
       r_busStartAddrShad <= r_busStartAddr;
@@ -188,6 +183,7 @@ module myDmaRam #( parameter [7:0]    customId = 8'h14 )
     end
   end
 
+  // Output bus transaction control signals based on DMA FSM state
   always @(posedge clock) begin
     if (r_dmaState == SET_UP_TRANS) begin
       beginTransactionOut <= `HI;
@@ -195,63 +191,75 @@ module myDmaRam #( parameter [7:0]    customId = 8'h14 )
       byteEnablesOut      <= BYTE_HI_ALL;
       burstSizeOut        <= s_usedBurstSize;
       addressDataOut      <= {r_busStartAddrShad[31:2], 2'd0};
-
     end else begin
       beginTransactionOut <= `LO;
       readNotWriteOut     <= `LO;
-      byteEnablesOut      <= `LO_(4);
-      burstSizeOut        <= `LO_(8);
-      addressDataOut      <= `LO_(32);
+      byteEnablesOut      <= `LO_4;
+      burstSizeOut        <= `LO_8;
+      addressDataOut      <= `LO_32;
     end
   end
 
-  //=============================================================
-  // Next state logic for DMA FSM
-  //=============================================================
+  //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+  //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+  //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+  // DMA FSM state and error register update
+  always @(negedge clock) begin
+    if (reset) begin
+      r_dmaState <= IDLE;
+      r_busError <= `LO;
 
-  always @(posedge clock)
+    end else begin
+      r_dmaState <= r_dmaNextState;
+
+      if      (r_dmaState == INIT)     begin r_busError <= `LO; end 
+      else if (r_dmaState == WAIT_END) begin r_busError <= `HI; end
+
+    end
+  end
+  
+
+  always @(posedge clock) begin
     case (r_dmaState)
-      INIT:                                       r_dmaNextState <= REQUEST_BUS;
-
-      IDLE:         if      (s_requestDmaIn)      r_dmaNextState <= INIT;
-                    else                          r_dmaNextState <= IDLE;
-
-      REQUEST_BUS:  if      (transactionGranted)  r_dmaNextState <= SET_UP_TRANS;
-                    else                          r_dmaNextState <= REQUEST_BUS;
-
-      SET_UP_TRANS:                               r_dmaNextState <= DO_READ;
-
-      DO_READ:      if      (busErrorIn)          r_dmaNextState <= WAIT_END;
-                    else if (s_transCompleted)    r_dmaNextState <= IDLE;
-                    else if (r_endTransIn)        r_dmaNextState <= REQUEST_BUS;
+      //0
+      IDLE:         if      (s_requestDmaIn)      r_dmaNextState <= INIT;          //1
+                    else                          r_dmaNextState <= IDLE;          //0
+      //1
+      INIT:                                       r_dmaNextState <= REQUEST_BUS;   //2
+      //2
+      REQUEST_BUS:  if      (transactionGranted)  r_dmaNextState <= SET_UP_TRANS;  //3
+                    else                          r_dmaNextState <= REQUEST_BUS;   //2
+      //3
+      SET_UP_TRANS:                               r_dmaNextState <= DO_READ;       //4
+      //4
+      DO_READ:      if      (busErrorIn)          r_dmaNextState <= WAIT_END;      //5
+                    else if (s_transCompleted)    r_dmaNextState <= IDLE;          //0
+                    else if (r_endTransIn)        r_dmaNextState <= REQUEST_BUS;   //2
                     else                          r_dmaNextState <= DO_READ;
+      //5
+      WAIT_END:     if      (r_endTransIn)        r_dmaNextState <= IDLE;          //0
+                    else                          r_dmaNextState <= WAIT_END;      //5
 
-      WAIT_END:     if      (r_endTransIn)        r_dmaNextState <= IDLE;
-                    else                          r_dmaNextState <= WAIT_END;
-
-      default:                                    r_dmaNextState <= IDLE;
+      default:                                    r_dmaNextState <= IDLE;          //0
 
     endcase
+  end
 
-  //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-  //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-  //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-
-    // Dual-ported SRAM instantiation
-    // Port A: accessed by custom instruction interface, clocked by 'clock'
-    // Port B: accessed by DMA bus interface, clocked by inverted 'clock'
-    _mySSRAM #( .bitwidth(32),
-                .nrOfEntries(512)) memory
-              ( .clockA(clock),
-                .clockB(~clock),
-                .writeEnableA(s_isSramWrite), // Write enable for port A
-                .writeEnableB(s_ramCiWriteEnable), // Write enable for port B
-                .addressA(s_dmaAddrCI),       // Address for port A from custom instruction
-                .addressB(r_ramCiAddr),     // Address for port B from DMA controller
-                .dataInA(valueB),             // Data input for port A
-                .dataInB(r_AddrDataIn),     // Data input for port B
-                .dataOutA(s_sramDataValue),   // Data output from port A
-                .dataOutB());                 // Data output from port B (unused)
+  // Dual-ported SRAM instantiation
+  // Port A: accessed by custom instruction interface, clocked by 'clock'
+  // Port B: accessed by DMA bus interface, clocked by inverted 'clock'
+  _mySSRAM #( .bitwidth(32),
+              .nrOfEntries(512)) memory
+            ( .clockA(clock),
+              .clockB(~clock),
+              .writeEnableA(s_isSramWrite), // Write enable for port A
+              .writeEnableB(s_ramCiWriteEnable), // Write enable for port B
+              .addressA(s_dmaAddrCI),       // Address for port A from custom instruction
+              .addressB(r_ramCiAddr),     // Address for port B from DMA controller
+              .dataInA(valueB),             // Data input for port A
+              .dataInB(r_AddrDataIn),     // Data input for port B
+              .dataOutA(s_sramDataValue),   // Data output from port A
+              .dataOutB());                 // Data output from port B (unused)
 
 
 endmodule
