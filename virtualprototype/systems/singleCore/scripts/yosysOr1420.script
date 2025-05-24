@@ -66,8 +66,8 @@ read -sv ../../../modules/myGpio/verilog/myGpio.v
 read -sv ../../../modules/myFilters/verilog/mySobelCI.v
 read -sv ../../../modules/myFilters/verilog/myGaussianCI.v
 
-#read -sv ../../../modules/myRamDmaCi/verilog/dualPortSSram.v
-#read -sv ../../../modules/myRamDmaCi/verilog/ramDmaCi.v
+read -sv ../../../modules/myMemory/verilog/_mySSRAM.v
+read -sv ../../../modules/myMemory/verilog/myDmaRamCI.v
 
 synth_ecp5 -top or1420SingleCore -json or1420SingleCore.json
 
