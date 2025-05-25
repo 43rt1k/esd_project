@@ -22,7 +22,7 @@
 
 extern const uint8_t SEVEN_SEG[10];
 
-void cam_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* result, volatile uint8_t* camOutput);
+void vga_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* vgaOutput);
 void cam_rgb_2_gray(camParameters* camParams, volatile uint16_t* rgb565, volatile uint8_t* grayScale);
 
 uint32_t asm_rgb_2_gray(uint32_t pixel1, uint32_t pixel2);

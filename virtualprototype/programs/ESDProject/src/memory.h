@@ -38,7 +38,7 @@ uint32_t DMA_p_inc(uint32_t p);
 
 
 void asm_DMA_W(uint32_t _in1, uint32_t _in2);
-void asm_DMA_R(uint32_t *_out1, uint32_t _in1);
+uint32_t asm_DMA_R(uint32_t _in1);
 void asm_DMA_wait_end();
 
 #endif // MEMORY_H

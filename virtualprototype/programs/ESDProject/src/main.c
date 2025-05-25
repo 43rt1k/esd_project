@@ -5,10 +5,29 @@
 #include "memory.h"
 #include "swap.h"
 
+void camera_dma_capture(volatile uint16_t* rgb) {
+        // 1. CAM -> SSRAM
+    asm_DMA_W(DMA_BUS_START_ADDR, 0x0000E000);
+    asm_DMA_W(DMA_MEM_START_ADDR, DMA_USED_CIRAM_ADDR);
+    asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE);
+    asm_DMA_W(DMA_BURST_SIZE, DMA_USED_BURST_SIZE);
+    asm_DMA_W(DMA_STATUS_R, DMA_START_BUS_TO_MEM);
+    asm_DMA_wait_end();
+
+    // 2. SSRAM -> RAM buffer
+    asm_DMA_W(DMA_MEM_START_ADDR, DMA_USED_CIRAM_ADDR);
+    asm_DMA_W(DMA_BUS_START_ADDR, (uint32_t)rgb);
+    asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE);
+    asm_DMA_W(DMA_BURST_SIZE, DMA_USED_BURST_SIZE);
+    asm_DMA_W(DMA_STATUS_R, DMA_START_MEM_TO_BUS);
+    asm_DMA_wait_end();
+}
 
 
 int main() {
     // Frame buffers
+    volatile uint32_t vgaOutputBuff[IMAGE_SIZE];
+
     volatile uint16_t rgb565[IMAGE_SIZE];
     volatile uint8_t grayScale[IMAGE_SIZE];
     volatile uint8_t blurBuffer[IMAGE_SIZE];   // Gaussian output
@@ -18,16 +37,16 @@ int main() {
     volatile unsigned int* vga = (unsigned int*)0x50000020;
     volatile unsigned int* gpio = (unsigned int*)0x40000000;
 
-    volatile uint32_t result;
     camParameters camParams;
     volatile ProfilingStatus profData;
 
     // Initialization
-    cam_init(&camParams, (unsigned int*)vga, &result, sobelBuffer);
+    vgaOutputBuff = (uint32_t)sobelBuffer;
+    vga_init(&camParams, (unsigned int*)vga, vgaOutputBuff);
     asm_reset_profiling();
 
 
-    // DMA_init();
+    DMA_init();
 
 
     uint32_t grayPixels;
@@ -35,7 +54,7 @@ int main() {
 
     while (1) {
         // Image capture
-        takeSingleImageBlocking((uint32_t)&rgb565[0]);
+        // takeSingleImageBlocking((uint32_t)&rgb565[0]);
 
         // DIP switch value to 7-segment
         uint32_t dipSwitch = gpio_get_DipSw(gpio);
@@ -44,6 +63,46 @@ int main() {
         // Profiling start
         asm_enable_profiling_counters();
 
+
+        // 1. CAM -> SSRAM
+        asm_DMA_W(DMA_BUS_START_ADDR, (uint32_t)&rgb565[0]);
+        asm_DMA_W(DMA_MEM_START_ADDR, 0);
+        asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE);
+        asm_DMA_W(DMA_BURST_SIZE, DMA_USED_BURST_SIZE);
+        asm_DMA_W(DMA_STATUS_R, DMA_START_BUS_TO_MEM);
+        asm_DMA_wait_end();
+
+        // 2. SSRAM -> RAM buffer
+        asm_DMA_W(DMA_MEM_START_ADDR, DMA_USED_CIRAM_ADDR);
+        asm_DMA_W(DMA_BUS_START_ADDR, (uint32_t)&rgb565[0]);
+        asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE);
+        asm_DMA_W(DMA_BURST_SIZE, DMA_USED_BURST_SIZE);
+        asm_DMA_W(DMA_STATUS_R, DMA_START_MEM_TO_BUS);
+        asm_DMA_wait_end();        // Print the RGB565 values
+        
+        // for (int i = 0; i < IMAGE_SIZE; i = i + 1) {
+        //     printf("rgb565[%d] = 0x%04X\n", i, rgb565[i]);
+        // }
+        // RGB565 -> grayscale
+        cam_rgb_2_gray(&camParams, rgb565, grayScale);
+
+        // Gaussian filtering
+        asm_gaussian(&camParams, grayScale, blurBuffer);
+
+        // Sobel filtering on blurred image
+        asm_sobel(&camParams, blurBuffer, sobelBuffer);
+
+        // Output result (Sobel) to VGA
+        // for (int i = 0; i < IMAGE_SIZE; i++) {
+        //     grayScale[i] = sobelBuffer[i];
+        // }
+
+        // Profiling read
+        asm_read_profiling(&profData, 0);
+    }
+
+    return 0;
+}
 
         // uint32_t dmaBuffer = 0; // DMA buffer index
         // uint32_t workBuffer = DMA_USED_BLOCK_SIZE; // Working buffer index
@@ -110,32 +169,3 @@ int main() {
             
         //     asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE); // Reset DMA block size
         // }
-
-
-
-        // RGB565 -> grayscale
-        cam_rgb_2_gray(&camParams, rgb565, grayScale);
-
-        // Gaussian filtering
-        asm_gaussian(&camParams, grayScale, blurBuffer);
-
-        // Sobel filtering on blurred image
-        asm_sobel(&camParams, blurBuffer, sobelBuffer);
-
-        // Output result (Sobel) to VGA
-        // for (int i = 0; i < IMAGE_SIZE; i++) {
-        //     grayScale[i] = sobelBuffer[i];
-        // }
-
-        // Profiling read
-        asm_read_profiling(&profData, 0);
-    }
-
-    return 0;
-}
-
-
-/*
-      
-
-*/

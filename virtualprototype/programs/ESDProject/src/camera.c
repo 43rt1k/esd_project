@@ -4,21 +4,28 @@
 #include <stdio.h>
 
 
-void cam_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* result, volatile uint8_t* camOutput) {
+void vga_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* vgaOutputBuff) {
+    volatile uint32_t* result;
+
     vga_clear();
     printf("Initialising camera (this takes up to 3 seconds)!\n");
+
     *camParams = initOv7670(VGA);
     printf("Done!\n");
+
     printf("NrOfPixels : %d\n", camParams->nrOfPixelsPerLine);
     *result = (camParams->nrOfPixelsPerLine <= 320) ? camParams->nrOfPixelsPerLine | 0x80000000 : camParams->nrOfPixelsPerLine;
     vga[0] = swap_u32(*result);
+
     printf("NrOfLines  : %d\n", camParams->nrOfLinesPerImage);
     *result = (camParams->nrOfLinesPerImage <= 240) ? camParams->nrOfLinesPerImage | 0x80000000 : camParams->nrOfLinesPerImage;
     vga[1] = swap_u32(*result);
+
     printf("PCLK (kHz) : %d\n", camParams->pixelClockInkHz);
     printf("FPS        : %d\n", camParams->framesPerSecond);
     vga[2] = swap_u32(2);
-    vga[3] = swap_u32((uint32_t)camOutput);
+
+    vga[3] = swap_u32(vgaOutputBuff);
 }
 
 void cam_rgb_2_gray(camParameters* camParams, volatile uint16_t* rgb565, volatile uint8_t* grayScale) {
@@ -229,7 +236,7 @@ typedef struct {
     volatile uint32_t totalCycles;
 } ProfilingStatus;
 
-void cam_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* result, volatile ProfilingStatus* profData, volatile uint8_t* camOutput);
+void cam_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* result, volatile ProfilingStatus* profData, volatile uint8_t* vgaOutputBuff);
 void cam_rgb_2_gray(camParameters* camParams, volatile uint16_t* rgb565, volatile uint8_t* grayScale);
 
 uint32_t gpio_get_DipSw(volatile unsigned int* gpio);
@@ -294,7 +301,7 @@ int main () {
 // Camera
 //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 // Camera initialization: configures camera, logs parameters, and prepares VGA overlay info
-void cam_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* result, volatile ProfilingStatus* profData, volatile uint8_t* camOutput) {
+void cam_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* result, volatile ProfilingStatus* profData, volatile uint8_t* vgaOutputBuff) {
     vga_clear();  // Clear the VGA display memory (black screen)
     printf("Initialising camera (this takes up to 3 seconds)!\n");
     // Initialize the OV7670 camera with VGA resolution, and store parameters in camParams
@@ -319,9 +326,9 @@ void cam_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* re
     // Log camera performance
     printf("PCLK (kHz) : %d\n", camParams->pixelClockInkHz);
     printf("FPS        : %d\n", camParams->framesPerSecond);
-    // Set camOutput mode (magic value 2) and send camOutput buffer pointer
-    vga[2] = swap_u32(2);  // 2 = camOutput format
-    vga[3] = swap_u32((uint32_t)camOutput);  // Base address of camOutput image buffer
+    // Set vgaOutputBuff mode (magic value 2) and send vgaOutputBuff buffer pointer
+    vga[2] = swap_u32(2);  // 2 = vgaOutputBuff format
+    vga[3] = swap_u32((uint32_t)vgaOutputBuff);  // Base address of vgaOutputBuff image buffer
 }
 
 // Converts RGB565 camera image to grayScale using ISE or software fallback

@@ -169,7 +169,7 @@ module or1420SingleCore ( input wire         clock12MHz,
   // DMA RAM
   //===========================================================================
   wire s_dmaRamRequest, s_dmaRamGranted, s_dmaRamBeginTransaction, s_dmaRamReadNotWrite;
-  // wire s_dmaRamEndTransaction, s_dmaRamDataValid;
+  wire s_dmaRamEndTransaction, s_dmaRamDataValid;
   wire [3:0] s_dmaRamByteEnables;
   wire [7:0] s_dmaRamBurstSize;
   wire [31:0] s_dmaRamAddressData;
@@ -219,8 +219,8 @@ module or1420SingleCore ( input wire         clock12MHz,
 
   assign s_endTransaction   = s_cpu1EndTransaction   | s_arbEndTransaction    | s_biosEndTransaction  | 
                               s_uartEndTransaction   | s_sdramEndTransaction  | s_hdmiEndTransaction  | 
-                              s_flashEndTransaction  | s_camEndTransaction    | s_GpioEndTransaction  ; 
-                              // s_dmaRamEndTransaction;
+                              s_flashEndTransaction  | s_camEndTransaction    | s_GpioEndTransaction  | 
+                              s_dmaRamEndTransaction;
 
   assign s_addressData      = s_cpu1AddressData      | s_biosAddressData      | s_uartAddressData     | 
                               s_sdramAddressData     | s_hdmiAddressData      | s_flashAddressData    | 
@@ -233,8 +233,8 @@ module or1420SingleCore ( input wire         clock12MHz,
 
   assign s_dataValid        = s_cpu1DataValid        | s_biosDataValid        | s_uartDataValid       | 
                               s_sdramDataValid       | s_hdmiDataValid        | s_flashDataValid      | 
-                              s_camDataValid         | s_GpioDataValid        ;
-                              // | s_dmaRamDataValid;
+                              s_camDataValid         | s_GpioDataValid        |
+                            | s_dmaRamDataValid;
 
   assign s_burstSize        = s_cpu1BurstSize        | s_hdmiBurstSize        | s_camBurstSize        | 
                               s_dmaRamBurstSize;
@@ -773,7 +773,23 @@ module or1420SingleCore ( input wire         clock12MHz,
                           .displaySelect(displaySelect),
                           .nSegments(nSegments));
 
-
+  myStatus statusVis (
+      .clock(s_systemClock),
+      .requestTransaction(s_dmaRamRequest),
+      .transactionGranted(s_dmaRamGranted),
+      .beginTransaction(s_beginTransaction),
+      .endTransaction(s_endTransaction),
+      .dataValid(s_dataValid),
+      .readNotWrite(s_readNotWrite),
+      .busError(s_busError),
+      .byteEnables(s_byteEnables),
+      .burstSize(s_burstSize),
+      .fsmState(r_dmaState), // or another internal state wire
+      .rgbRow(rgbRow),
+      .red(red),
+      .green(green),
+      .blue(blue)
+    );
   //===========================================================================
   // Custom Instructions
   //===========================================================================
@@ -815,6 +831,7 @@ module or1420SingleCore ( input wire         clock12MHz,
                   .valueA(s_cpu1CiDataA),
                   .valueB(s_cpu1CiDataB),
                   .ciN(s_cpu1CiN),
+
                   .done(s_gaussianDone),
                   .result(s_gaussianResult));
 
@@ -838,29 +855,13 @@ module or1420SingleCore ( input wire         clock12MHz,
              .busyIn(s_busy),
              .beginTransactionOut(s_dmaRamBeginTransaction),
              .readNotWriteOut(s_dmaRamReadNotWrite),
-            //  .endTransactionOut(s_dmaRamEndTransaction),
-            //  .dataValidOut(s_dmaRamDataValid),
+             .endTransactionOut(s_dmaRamEndTransaction),
+             .dataValidOut(s_dmaRamDataValid),
              .byteEnablesOut(s_dmaRamByteEnables),
              .burstSizeOut(s_dmaRamBurstSize),
              .addressDataOut(s_dmaRamAddressData));
 
-    myStatus statusVis (
-      .clock(s_systemClock),
-      .requestTransaction(s_dmaRamRequest),
-      .transactionGranted(s_dmaRamGranted),
-      .beginTransaction(s_beginTransaction),
-      .endTransaction(s_endTransaction),
-      .dataValid(s_dataValid),
-      .readNotWrite(s_readNotWrite),
-      .busError(s_busError),
-      .byteEnables(s_byteEnables),
-      .burstSize(s_burstSize),
-      .fsmState(r_dmaState), // or another internal state wire
-      .rgbRow(rgbRow),
-      .red(red),
-      .green(green),
-      .blue(blue)
-    );
+
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
