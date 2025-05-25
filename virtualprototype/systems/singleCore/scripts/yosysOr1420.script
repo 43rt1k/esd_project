@@ -54,6 +54,7 @@ read -sv ../verilog/or1420SingleCore.v
 
 
 read -sv ../../../modules/myProfile/verilog/myProfileCI.v
+read -sv ../../../modules/myProfile/verilog/myStatus.v
 read -sv ../../../modules/myProfile/verilog/_myCounter.v
 
 read -sv ../../../modules/myGrayscale/verilog/_myGrayscale1pixel.v

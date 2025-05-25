@@ -32,6 +32,11 @@ module or1420SingleCore ( input wire         clock12MHz,
                           output wire [7:0]  nSegments,
                           output wire  [2:0] displaySelect,
 
+                          output wire [3:0]  rgbRow,
+                          output wire [9:0]  red,
+                          output wire [9:0]  green,
+                          output wire [9:0]  blue,
+
 `ifdef GECKO5Education
                           output wire [4:0]  hdmiRed,
                                              hdmiBlue,
@@ -839,7 +844,23 @@ module or1420SingleCore ( input wire         clock12MHz,
              .burstSizeOut(s_dmaRamBurstSize),
              .addressDataOut(s_dmaRamAddressData));
 
-
+    myStatus statusVis (
+      .clock(s_systemClock),
+      .requestTransaction(s_dmaRamRequest),
+      .transactionGranted(s_dmaRamGranted),
+      .beginTransaction(s_beginTransaction),
+      .endTransaction(s_endTransaction),
+      .dataValid(s_dataValid),
+      .readNotWrite(s_readNotWrite),
+      .busError(s_busError),
+      .byteEnables(s_byteEnables),
+      .burstSize(s_burstSize),
+      .fsmState(r_dmaState), // or another internal state wire
+      .rgbRow(rgbRow),
+      .red(red),
+      .green(green),
+      .blue(blue)
+    );
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
