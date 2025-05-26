@@ -5,28 +5,27 @@
 #include "memory.h"
 #include "swap.h"
 
-void camera_dma_capture(volatile uint16_t* rgb) {
-        // 1. CAM -> SSRAM
-    asm_DMA_W(DMA_BUS_START_ADDR, 0x0000E000);
-    asm_DMA_W(DMA_MEM_START_ADDR, DMA_USED_CIRAM_ADDR);
-    asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE);
-    asm_DMA_W(DMA_BURST_SIZE, DMA_USED_BURST_SIZE);
-    asm_DMA_W(DMA_STATUS_R, DMA_START_BUS_TO_MEM);
-    asm_DMA_wait_end();
+// void camera_dma_capture(volatile uint16_t* rgb) {
+//         // 1. CAM -> SSRAM
+//     asm_DMA_W(DMA_BUS_START_ADDR, 0x0000E000);
+//     asm_DMA_W(DMA_MEM_START_ADDR, DMA_USED_CIRAM_ADDR);
+//     asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE);
+//     asm_DMA_W(DMA_BURST_SIZE, DMA_USED_BURST_SIZE);
+//     asm_DMA_W(DMA_STATUS_R, DMA_START_BUS_TO_MEM);
+//     asm_DMA_wait_end();
 
-    // 2. SSRAM -> RAM buffer
-    asm_DMA_W(DMA_MEM_START_ADDR, DMA_USED_CIRAM_ADDR);
-    asm_DMA_W(DMA_BUS_START_ADDR, (uint32_t)rgb);
-    asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE);
-    asm_DMA_W(DMA_BURST_SIZE, DMA_USED_BURST_SIZE);
-    asm_DMA_W(DMA_STATUS_R, DMA_START_MEM_TO_BUS);
-    asm_DMA_wait_end();
-}
+//     // 2. SSRAM -> RAM buffer
+//     asm_DMA_W(DMA_MEM_START_ADDR, DMA_USED_CIRAM_ADDR);
+//     asm_DMA_W(DMA_BUS_START_ADDR, (uint32_t)rgb);
+//     asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE);
+//     asm_DMA_W(DMA_BURST_SIZE, DMA_USED_BURST_SIZE);
+//     asm_DMA_W(DMA_STATUS_R, DMA_START_MEM_TO_BUS);
+//     asm_DMA_wait_end();
+// }
 
 
 int main() {
     // Frame buffers
-    volatile uint32_t vgaOutputBuff[IMAGE_SIZE];
 
     volatile uint16_t rgb565[IMAGE_SIZE];
     volatile uint8_t grayScale[IMAGE_SIZE];
@@ -41,20 +40,16 @@ int main() {
     volatile ProfilingStatus profData;
 
     // Initialization
-    vgaOutputBuff = (uint32_t)sobelBuffer;
+    uint32_t* vgaOutputBuff = (uint32_t*)sobelBuffer;
     vga_init(&camParams, (unsigned int*)vga, vgaOutputBuff);
+    
+    
     asm_reset_profiling();
 
 
-    DMA_init();
-
-
-    uint32_t grayPixels;
-    uint32_t pixel1, pixel2;
-
     while (1) {
         // Image capture
-        // takeSingleImageBlocking((uint32_t)&rgb565[0]);
+        takeSingleImageBlocking((uint32_t)&rgb565[0]);
 
         // DIP switch value to 7-segment
         uint32_t dipSwitch = gpio_get_DipSw(gpio);
@@ -64,22 +59,7 @@ int main() {
         asm_enable_profiling_counters();
 
 
-        // 1. CAM -> SSRAM
-        asm_DMA_W(DMA_BUS_START_ADDR, (uint32_t)&rgb565[0]);
-        asm_DMA_W(DMA_MEM_START_ADDR, 0);
-        asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE);
-        asm_DMA_W(DMA_BURST_SIZE, DMA_USED_BURST_SIZE);
-        asm_DMA_W(DMA_STATUS_R, DMA_START_BUS_TO_MEM);
-        asm_DMA_wait_end();
 
-        // 2. SSRAM -> RAM buffer
-        asm_DMA_W(DMA_MEM_START_ADDR, DMA_USED_CIRAM_ADDR);
-        asm_DMA_W(DMA_BUS_START_ADDR, (uint32_t)&rgb565[0]);
-        asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE);
-        asm_DMA_W(DMA_BURST_SIZE, DMA_USED_BURST_SIZE);
-        asm_DMA_W(DMA_STATUS_R, DMA_START_MEM_TO_BUS);
-        asm_DMA_wait_end();        // Print the RGB565 values
-        
         // for (int i = 0; i < IMAGE_SIZE; i = i + 1) {
         //     printf("rgb565[%d] = 0x%04X\n", i, rgb565[i]);
         // }

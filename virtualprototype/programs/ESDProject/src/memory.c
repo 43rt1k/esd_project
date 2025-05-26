@@ -29,7 +29,7 @@ uint32_t asm_DMA_R(uint32_t _in1) {
   asm volatile(NIOS_INSTR " %[out1],%[in1],r0," CI_ID_DMA 
                 : [out1] "=r" (_out1)
                 : [in1] "r" (_in1));
-                
+
   return _out1; // Return value is not used, but can be useful for debugging
 }
 
@@ -37,7 +37,8 @@ void asm_DMA_wait_end() {
   uint32_t status;
 
   do {
-    printf("Waiting for DMA to complete...\n");
-    // asm_DMA_R(&status, DMA_STATUS_R);
+    // printf("Waiting for DMA to complete...\n");
+    status = asm_DMA_R(DMA_STATUS_R);
+    printf("DMA status: %x\n", status);
   } while (status != 0);
 }

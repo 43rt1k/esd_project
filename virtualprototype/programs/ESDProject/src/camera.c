@@ -25,7 +25,7 @@ void vga_init(camParameters* camParams, unsigned int* vga, volatile uint32_t* vg
     printf("FPS        : %d\n", camParams->framesPerSecond);
     vga[2] = swap_u32(2);
 
-    vga[3] = swap_u32(vgaOutputBuff);
+    vga[3] = swap_u32((uint32_t)vgaOutputBuff);
 }
 
 void cam_rgb_2_gray(camParameters* camParams, volatile uint16_t* rgb565, volatile uint8_t* grayScale) {

@@ -95,6 +95,7 @@ module myDmaRam #( parameter [7:0]    customId = 8'h14 )
   reg  [3:0]  r_dmaState,          r_dmaNextState;
   reg         r_busError,          r_isSramRead,        r_endTransIn,       r_dataValidIn;
   reg r_valB_bus2mem;
+  reg r_dataValidOut;
 
   reg [8:0] r_wordsWrittenReg;
   reg [31:0] r_busRamData;
@@ -236,7 +237,7 @@ end
       addressDataOut      <= `LO_32;
     end
   end
-  assign dataValidOut = (r_dmaState == DO_WRITE && ~busyIn && ~r_wordsWrittenReg[8]);
+
   assign addressDataOut = (r_dmaState == DO_WRITE) ? r_busRamData : `LO_32;
   assign endTransactionOut = (r_dmaState == END_WRITE_TRANS || r_dmaState == END_TRANS_ERROR);
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
@@ -264,19 +265,18 @@ end
       REQUEST_BUS:  if      (transactionGranted)  r_dmaNextState <= SET_UP_TRANS;  //3
                     else                          r_dmaNextState <= REQUEST_BUS;   //2
       //3
-      SET_UP_TRANS: if (r_valB_bus2mem)           r_dmaNextState <= DO_READ;
-                    else                          r_dmaNextState <= DO_WRITE;
-
+      SET_UP_TRANS: if      (r_valB_bus2mem)      r_dmaNextState <= DO_READ;      //4
+                    else                          r_dmaNextState <= DO_WRITE;     //6
       //4
       DO_READ:      if      (busErrorIn)          r_dmaNextState <= WAIT_END;      //5
                     else if (_transCompleted)     r_dmaNextState <= IDLE;          //0
                     else if (r_endTransIn)        r_dmaNextState <= REQUEST_BUS;   //2
-                    else                          r_dmaNextState <= DO_READ;
+                    else                          r_dmaNextState <= DO_READ;       //4
       //5
       WAIT_END:     if      (r_endTransIn)        r_dmaNextState <= IDLE;          //0
                     else                          r_dmaNextState <= WAIT_END;      //5
 
-      DO_WRITE:     if      (busErrorIn)          r_dmaNextState <= END_TRANSACTION_ERROR;
+      DO_WRITE:     if      (busErrorIn)          r_dmaNextState <= END_TRANS_ERROR;
                     else if (r_wordsWrittenReg[8] && ~busyIn) r_dmaNextState <= END_WRITE_TRANS;
                     else                          r_dmaNextState <= DO_WRITE;
 
@@ -310,7 +310,13 @@ end
     end
   end
 
-
+  always @(posedge clock or posedge reset) begin
+    if (reset)
+      r_dataValidOut <= `LO;
+    else
+      r_dataValidOut <= (r_dmaState == DO_WRITE && ~busyIn && ~r_wordsWrittenReg[8]);
+  end
+  assign dataValidOut = r_dataValidOut;
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
