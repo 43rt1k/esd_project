@@ -54,7 +54,6 @@ read -sv ../verilog/or1420SingleCore.v
 
 
 read -sv ../../../modules/myProfile/verilog/myProfileCI.v
-read -sv ../../../modules/myProfile/verilog/myStatus.v
 read -sv ../../../modules/myProfile/verilog/_myCounter.v
 
 read -sv ../../../modules/myGrayscale/verilog/_myGrayscale1pixel.v
@@ -67,8 +66,11 @@ read -sv ../../../modules/myGpio/verilog/myGpio.v
 read -sv ../../../modules/myFilters/verilog/mySobelCI.v
 read -sv ../../../modules/myFilters/verilog/myGaussianCI.v
 
-read -sv ../../../modules/myMemory/verilog/_mySSRAM.v
-read -sv ../../../modules/myMemory/verilog/myDmaRamCI.v
+# read -sv ../../../modules/myMemory/verilog/_mySSRAM.v
+# read -sv ../../../modules/myMemory/verilog/myDmaRamCI.v
+
+read -sv ../../../modules/myLedMatrix/verilog/_myLedPixel.v
+read -sv ../../../modules/myLedMatrix/verilog/myLedMatrixCI.v
 
 synth_ecp5 -top or1420SingleCore -json or1420SingleCore.json
 

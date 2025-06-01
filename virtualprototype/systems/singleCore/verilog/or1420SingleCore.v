@@ -87,8 +87,8 @@ module or1420SingleCore ( input wire         clock12MHz,
   wire        s_cpu1CiRa,         s_cpu1CiRb,         s_cpu1CiRc;
   wire [4:0]  s_cpu1CiA,          s_cpu1CiB,          s_cpu1CiC;
   wire [7:0]  s_cpu1CiN;
-  wire [31:0] s_cpu1CiDataA,      s_cpu1CiDataB,      s_cpu1CiResult,
-              s_dmaRamResult;
+  wire [31:0] s_cpu1CiDataA,      s_cpu1CiDataB,      s_cpu1CiResult;
+              // , s_dmaRamResult;
   wire        s_cpu1IcacheRequestBus,                 s_cpu1DcacheRequestBus;
   wire        s_cpu1IcacheBusAccessGranted,           s_cpu1DcacheBusAccessGranted;
   wire        s_cpu1BeginTransaction,                 s_cpu1EndTransaction;
@@ -102,7 +102,8 @@ module or1420SingleCore ( input wire         clock12MHz,
   //===========================================================================
   wire        s_hdmiDone,         s_swapByteDone,       s_flashDone,      s_cpuFreqDone,
               s_camCiDone,        s_i2cCiDone,          s_delayCiDone,    s_profileDone,  
-              s_grayDone,         s_sobelDone,          s_gaussianDone,   s_dmaRamDone;
+              s_grayDone,         s_sobelDone,          s_gaussianDone;
+              // ,   s_dmaRamDone;
   wire [31:0] s_hdmiResult,       s_swapByteResult,     s_flashResult,    s_cpuFreqResult;
   wire [31:0] s_camCiResult,      s_i2cCiResult,        s_delayResult;
   wire [31:0] s_cpuFreqValue,     s_profileResult,      s_grayResult,     s_sobelResult,
@@ -168,11 +169,11 @@ module or1420SingleCore ( input wire         clock12MHz,
   //===========================================================================
   // DMA RAM
   //===========================================================================
-  wire s_dmaRamRequest, s_dmaRamGranted, s_dmaRamBeginTransaction, s_dmaRamReadNotWrite;
-  wire s_dmaRamEndTransaction, s_dmaRamDataValid;
-  wire [3:0] s_dmaRamByteEnables;
-  wire [7:0] s_dmaRamBurstSize;
-  wire [31:0] s_dmaRamAddressData;
+  // wire s_dmaRamRequest, s_dmaRamGranted, s_dmaRamBeginTransaction, s_dmaRamReadNotWrite;
+  // wire s_dmaRamEndTransaction, s_dmaRamDataValid;
+  // wire [3:0] s_dmaRamByteEnables;
+  // wire [7:0] s_dmaRamBurstSize;
+  // wire [31:0] s_dmaRamAddressData;
   //===========================================================================
   // Assignments
   //===========================================================================
@@ -180,12 +181,14 @@ module or1420SingleCore ( input wire         clock12MHz,
   assign s_cpu1CiDone =   s_hdmiDone      | s_swapByteDone   | s_flashDone    | 
                           s_cpuFreqDone   | s_i2cCiDone      | s_delayCiDone  | 
                           s_camCiDone     | s_profileDone    | s_grayDone     |
-                          s_sobelDone     | s_gaussianDone   | s_dmaRamDone;
+                          s_sobelDone     | s_gaussianDone   | s_ledDone      ;
+                          // | s_dmaRamDone;
 
   assign s_cpu1CiResult = s_hdmiResult    | s_swapByteResult | s_flashResult  | 
                           s_cpuFreqResult | s_i2cCiResult    | s_camCiResult  | 
                           s_delayResult   | s_profileResult  | s_grayResult   |
-                          s_sobelResult   | s_gaussianResult | s_dmaRamResult;
+                          s_sobelResult   | s_gaussianResult | s_ledResult    ;
+                          // | s_dmaRamResult;
 
   assign s_cpu1CiCke = 1'b1;
   
@@ -199,45 +202,48 @@ module or1420SingleCore ( input wire         clock12MHz,
   assign s_busRequests[30]            = s_cpu1IcacheRequestBus;
   assign s_busRequests[29]            = s_hdmiRequestBus;
   assign s_busRequests[28]            = s_camReqBus;
-  assign s_busRequests[27]            = s_dmaRamRequest;
-  assign s_busRequests[26:0]          = 27'd0;
+  // assign s_busRequests[27]            = s_dmaRamRequest;
+  assign s_busRequests[27:0]          = 28'd0;
+  // assign s_busRequests[26:0]          = 27'd0;
 
   // Bus grant routing
   assign s_cpu1DcacheBusAccessGranted = s_busGrants[31];
   assign s_cpu1IcacheBusAccessGranted = s_busGrants[30];
   assign s_hdmiBusgranted             = s_busGrants[29];
   assign s_camAckBus                  = s_busGrants[28];
-  assign s_dmaRamGranted              = s_busGrants[27];
+  // assign s_dmaRamGranted              = s_busGrants[27];
 
   // Central bus error arbitration
   assign s_busError         = s_arbBusError         | s_biosBusError          | s_uartBusError        | 
                               s_sdramBusError       | s_flashBusError         | s_GpioBusError;
  
   // Global transaction signals
-  assign s_beginTransaction = s_cpu1BeginTransaction | s_hdmiBeginTransaction | s_camBeginTransaction | 
-                              s_dmaRamBeginTransaction;
+  assign s_beginTransaction = s_cpu1BeginTransaction | s_hdmiBeginTransaction | s_camBeginTransaction ; 
+                              // / s_dmaRamBeginTransaction;
 
   assign s_endTransaction   = s_cpu1EndTransaction   | s_arbEndTransaction    | s_biosEndTransaction  | 
                               s_uartEndTransaction   | s_sdramEndTransaction  | s_hdmiEndTransaction  | 
-                              s_flashEndTransaction  | s_camEndTransaction    | s_GpioEndTransaction  | 
-                              s_dmaRamEndTransaction;
+                              s_flashEndTransaction  | s_camEndTransaction    | s_GpioEndTransaction  ; 
+                              // | s_dmaRamEndTransaction;
 
   assign s_addressData      = s_cpu1AddressData      | s_biosAddressData      | s_uartAddressData     | 
                               s_sdramAddressData     | s_hdmiAddressData      | s_flashAddressData    | 
-                              s_camAddressData       | s_GpioAddressData      | s_dmaRamAddressData;
+                              s_camAddressData       | s_GpioAddressData      ;
+                              // | s_dmaRamAddressData;
 
-  assign s_byteEnables      = s_cpu1byteEnables      | s_hdmiByteEnables      | s_camByteEnables      |
-                              s_dmaRamByteEnables;
+  assign s_byteEnables      = s_cpu1byteEnables      | s_hdmiByteEnables      | s_camByteEnables      ;
+                              // | s_dmaRamByteEnables;
 
-  assign s_readNotWrite     = s_cpu1ReadNotWrite     | s_hdmiReadNotWrite     | s_dmaRamReadNotWrite;
+  assign s_readNotWrite     = s_cpu1ReadNotWrite     | s_hdmiReadNotWrite     ;
+                              // | s_dmaRamReadNotWrite;
 
   assign s_dataValid        = s_cpu1DataValid        | s_biosDataValid        | s_uartDataValid       | 
                               s_sdramDataValid       | s_hdmiDataValid        | s_flashDataValid      | 
-                              s_camDataValid         | s_GpioDataValid        |
-                            | s_dmaRamDataValid;
+                              s_camDataValid         | s_GpioDataValid        ;
+                            // | s_dmaRamDataValid;
 
-  assign s_burstSize        = s_cpu1BurstSize        | s_hdmiBurstSize        | s_camBurstSize        | 
-                              s_dmaRamBurstSize;
+  assign s_burstSize        = s_cpu1BurstSize        | s_hdmiBurstSize        | s_camBurstSize;        
+                              // | s_dmaRamBurstSize;
 
   assign s_busy             = s_sdramBusy;
 
@@ -767,29 +773,40 @@ module or1420SingleCore ( input wire         clock12MHz,
           .dataValidOut(s_GpioDataValid),
           .busErrorOut(s_GpioBusError));
 
+
+  // myGPIO #( .nrOfInputs(5),
+  //         .nrOfOutputs(0),
+  //         .Base(32'h40000000)
+  // ) joystick (
+  //         .clock(s_systemClock),
+  //         .reset(s_cpuReset),
+
+  //         .externalInputs(),
+  //         .externalOutputs(),
+
+  //         // ← INPUTS DIRECT FROM CPU
+  //         .addressDataIn(s_addressData),
+  //         .byteEnablesIn(s_byteEnables),
+  //         .burstSizeIn(s_burstSize),
+  //         .readNotWriteIn(s_readNotWrite),
+  //         .beginTransactionIn(s_beginTransaction),
+  //         .endTransactionIn(s_endTransaction),
+  //         .dataValidIn(s_dataValid),
+  //         .busErrorIn(s_busError),
+  //         .busyIn(s_busy),
+
+  //         // ← OUTPUTS JOIN GLOBAL BUS
+  //         .addressDataOut(),
+  //         .endTransactionOut(),
+  //         .dataValidOut(),
+  //         .busErrorOut());
+
   sevenSegShow scan7segs (.clock(s_systemClock),
                           .reset(s_cpuReset),
                           .s_III_Digits(s_III_Digits),
                           .displaySelect(displaySelect),
                           .nSegments(nSegments));
-
-  myStatus statusVis (
-      .clock(s_systemClock),
-      .requestTransaction(s_dmaRamRequest),
-      .transactionGranted(s_dmaRamGranted),
-      .beginTransaction(s_beginTransaction),
-      .endTransaction(s_endTransaction),
-      .dataValid(s_dataValid),
-      .readNotWrite(s_readNotWrite),
-      .busError(s_busError),
-      .byteEnables(s_byteEnables),
-      .burstSize(s_burstSize),
-      .fsmState(r_dmaState), // or another internal state wire
-      .rgbRow(rgbRow),
-      .red(red),
-      .green(green),
-      .blue(blue)
-    );
+  
   //===========================================================================
   // Custom Instructions
   //===========================================================================
@@ -835,32 +852,55 @@ module or1420SingleCore ( input wire         clock12MHz,
                   .done(s_gaussianDone),
                   .result(s_gaussianResult));
 
-  myDmaRam #(.customId(8'h14) ) dmaRam
-            (.start(s_cpu1CiStart),
-             .clock(s_systemClock),
-             .reset(s_cpuReset),
-             .valueA(s_cpu1CiDataA),
-             .valueB(s_cpu1CiDataB),
-             .ciN(s_cpu1CiN),
+  // myDmaRam #(.customId(8'h14) ) dmaRam
+  //           (.start(s_cpu1CiStart),
+  //            .clock(s_systemClock),
+  //            .reset(s_cpuReset),
+  //            .valueA(s_cpu1CiDataA),
+  //            .valueB(s_cpu1CiDataB),
+  //            .ciN(s_cpu1CiN),
 
-             .done(s_dmaRamDone),
-             .result(s_dmaRamResult),
+  //            .done(s_dmaRamDone),
+  //            .result(s_dmaRamResult),
 
-             .requestTransaction(s_dmaRamRequest),
-             .transactionGranted(s_dmaRamGranted),
-             .endTransactionIn(s_endTransaction),
-             .dataValidIn(s_dataValid),
-             .busErrorIn(s_busError),
-             .addressDataIn(s_addressData),
-             .busyIn(s_busy),
-             .beginTransactionOut(s_dmaRamBeginTransaction),
-             .readNotWriteOut(s_dmaRamReadNotWrite),
-             .endTransactionOut(s_dmaRamEndTransaction),
-             .dataValidOut(s_dmaRamDataValid),
-             .byteEnablesOut(s_dmaRamByteEnables),
-             .burstSizeOut(s_dmaRamBurstSize),
-             .addressDataOut(s_dmaRamAddressData));
+  //            .requestTransaction(s_dmaRamRequest),
+  //            .transactionGranted(s_dmaRamGranted),
+  //            .endTransactionIn(s_endTransaction),
+  //            .dataValidIn(s_dataValid),
+  //            .busErrorIn(s_busError),
+  //            .addressDataIn(s_addressData),
+  //            .busyIn(s_busy),
+  //            .beginTransactionOut(s_dmaRamBeginTransaction),
+  //            .readNotWriteOut(s_dmaRamReadNotWrite),
+  //            .endTransactionOut(s_dmaRamEndTransaction),
+  //            .dataValidOut(s_dmaRamDataValid),
+  //            .byteEnablesOut(s_dmaRamByteEnables),
+  //            .burstSizeOut(s_dmaRamBurstSize),
+  //            .addressDataOut(s_dmaRamAddressData));
 
+
+
+
+  wire        s_ledDone;
+  wire [31:0] s_ledResult;
+
+  myLedMatrixCI #(.customId(8'h15) ) myLedMatrixInst (
+                  .start(s_cpu1CiStart),
+                  .clock(s_systemClock),
+                  .reset(s_cpuReset),
+                  
+                  .valueA(s_cpu1CiDataA),
+                  .valueB(s_cpu1CiDataB),
+                  .result(s_ledResult),
+
+                  .ciN(s_cpu1CiN),
+                  .done(s_ledDone),
+
+                  .rgbRow(rgbRow),
+                  .red(red),
+                  .green(green),
+                  .blue(blue)
+  );
 
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
   //–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
