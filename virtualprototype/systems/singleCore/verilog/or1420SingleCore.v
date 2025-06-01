@@ -28,6 +28,7 @@ module or1420SingleCore ( input wire         clock12MHz,
                                              verticalSync,
                                              activePixel,
 
+                          input wire  [4:0]  nJoystick,
                           input wire  [7:0]  nDipSwitch,
                           output wire [7:0]  nSegments,
                           output wire  [2:0] displaySelect,
@@ -36,6 +37,8 @@ module or1420SingleCore ( input wire         clock12MHz,
                           output wire [9:0]  red,
                           output wire [9:0]  green,
                           output wire [9:0]  blue,
+
+
 
 `ifdef GECKO5Education
                           output wire [4:0]  hdmiRed,
@@ -165,6 +168,8 @@ module or1420SingleCore ( input wire         clock12MHz,
   //===========================================================================
   wire        s_GpioEndTransaction, s_GpioDataValid, s_GpioBusError;
   wire [31:0] s_GpioAddressData;
+  wire        s_GpioEndTransaction1, s_GpioDataValid1, s_GpioBusError1;
+  wire [31:0] s_GpioAddressData1;
   wire [23:0] s_III_Digits;
   //===========================================================================
   // DMA RAM
@@ -215,7 +220,7 @@ module or1420SingleCore ( input wire         clock12MHz,
 
   // Central bus error arbitration
   assign s_busError         = s_arbBusError         | s_biosBusError          | s_uartBusError        | 
-                              s_sdramBusError       | s_flashBusError         | s_GpioBusError;
+                              s_sdramBusError       | s_flashBusError         | s_GpioBusError    | s_GpioBusError1;  
  
   // Global transaction signals
   assign s_beginTransaction = s_cpu1BeginTransaction | s_hdmiBeginTransaction | s_camBeginTransaction ; 
@@ -223,12 +228,12 @@ module or1420SingleCore ( input wire         clock12MHz,
 
   assign s_endTransaction   = s_cpu1EndTransaction   | s_arbEndTransaction    | s_biosEndTransaction  | 
                               s_uartEndTransaction   | s_sdramEndTransaction  | s_hdmiEndTransaction  | 
-                              s_flashEndTransaction  | s_camEndTransaction    | s_GpioEndTransaction  ; 
+                              s_flashEndTransaction  | s_camEndTransaction    | s_GpioEndTransaction  | s_GpioEndTransaction1; 
                               // | s_dmaRamEndTransaction;
 
   assign s_addressData      = s_cpu1AddressData      | s_biosAddressData      | s_uartAddressData     | 
                               s_sdramAddressData     | s_hdmiAddressData      | s_flashAddressData    | 
-                              s_camAddressData       | s_GpioAddressData      ;
+                              s_camAddressData       | s_GpioAddressData      | s_GpioAddressData1 ;
                               // | s_dmaRamAddressData;
 
   assign s_byteEnables      = s_cpu1byteEnables      | s_hdmiByteEnables      | s_camByteEnables      ;
@@ -239,7 +244,7 @@ module or1420SingleCore ( input wire         clock12MHz,
 
   assign s_dataValid        = s_cpu1DataValid        | s_biosDataValid        | s_uartDataValid       | 
                               s_sdramDataValid       | s_hdmiDataValid        | s_flashDataValid      | 
-                              s_camDataValid         | s_GpioDataValid        ;
+                              s_camDataValid         | s_GpioDataValid        | s_GpioDataValid1 ;
                             // | s_dmaRamDataValid;
 
   assign s_burstSize        = s_cpu1BurstSize        | s_hdmiBurstSize        | s_camBurstSize;        
@@ -774,32 +779,31 @@ module or1420SingleCore ( input wire         clock12MHz,
           .busErrorOut(s_GpioBusError));
 
 
-  // myGPIO #( .nrOfInputs(5),
-  //         .nrOfOutputs(0),
-  //         .Base(32'h40000000)
-  // ) joystick (
-  //         .clock(s_systemClock),
-  //         .reset(s_cpuReset),
+  myGPIO #( .nrOfInputs(5),
+          .nrOfOutputs(2),
+          .Base(32'h40000100)
+  ) joystick (
+          .clock(s_systemClock),
+          .reset(s_cpuReset),
+          .externalInputs(nJoystick),
+          .externalOutputs(),
 
-  //         .externalInputs(),
-  //         .externalOutputs(),
+          // ← INPUTS DIRECT FROM CPU
+          .addressDataIn(s_addressData),
+          .byteEnablesIn(s_byteEnables),
+          .burstSizeIn(s_burstSize),
+          .readNotWriteIn(s_readNotWrite),
+          .beginTransactionIn(s_beginTransaction),
+          .endTransactionIn(s_endTransaction),
+          .dataValidIn(s_dataValid),
+          .busErrorIn(s_busError),
+          .busyIn(s_busy),
 
-  //         // ← INPUTS DIRECT FROM CPU
-  //         .addressDataIn(s_addressData),
-  //         .byteEnablesIn(s_byteEnables),
-  //         .burstSizeIn(s_burstSize),
-  //         .readNotWriteIn(s_readNotWrite),
-  //         .beginTransactionIn(s_beginTransaction),
-  //         .endTransactionIn(s_endTransaction),
-  //         .dataValidIn(s_dataValid),
-  //         .busErrorIn(s_busError),
-  //         .busyIn(s_busy),
-
-  //         // ← OUTPUTS JOIN GLOBAL BUS
-  //         .addressDataOut(),
-  //         .endTransactionOut(),
-  //         .dataValidOut(),
-  //         .busErrorOut());
+          // ← OUTPUTS JOIN GLOBAL BUS
+          .addressDataOut(s_GpioAddressData1),
+          .endTransactionOut(s_GpioEndTransaction1),
+          .dataValidOut(s_GpioDataValid1),
+          .busErrorOut(s_GpioBusError1));
 
   sevenSegShow scan7segs (.clock(s_systemClock),
                           .reset(s_cpuReset),

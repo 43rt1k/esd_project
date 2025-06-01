@@ -3,10 +3,39 @@
 #include "camera.h"
 #include "gpio.h"
 #include "memory.h"
+#include "game.h"
 #include "swap.h"
 #include <stdint.h>
 
 #define CI_ID_LED_MATRIX "0x15"
+
+
+ 
+static Direction mapJoystickToDirection(uint32_t nJoystick)
+{
+    switch (nJoystick) {
+        case 0x1E000000u:
+            // “top” pressed → go UP
+            return UP;
+
+        case 0x1B000000u:
+            // “bottom” pressed → go DOWN
+            return DOWN;
+
+        case 0x1D000000u:
+            // this code was labeled “down,” but it actually corresponds to LEFT
+            return LEFT;
+
+        case 0x17000000u:
+            // “right” pressed → go RIGHT
+            return RIGHT;
+
+        default:
+            // any other value: do nothing (keep previous direction)
+            break;
+    }
+}
+
 
 void asm_ledMatrix_W(uint32_t _in1, uint32_t _in2) {
     asm volatile(NIOS_INSTR " r0,%[in1],%[in2]," CI_ID_LED_MATRIX
@@ -14,66 +43,8 @@ void asm_ledMatrix_W(uint32_t _in1, uint32_t _in2) {
                  : [in1] "r"(_in1),
                    [in2] "r"(_in2));
 }
-uint8_t matrix1[12][10] = {
-    {1,1,1,1,1,1,1,1,1,1},  // row 0: all ON
-    {1,1,0,0,0,0,0,0,0,1},  // row 1
-    {1,0,1,0,0,0,0,0,0,1},  // row 2
-    {1,0,0,1,0,0,0,0,0,1},  // row 3
-    {1,0,0,0,0,0,0,0,0,1},  // row 4
-    {1,0,0,0,0,0,0,0,0,1},  // row 5
-    {1,0,0,0,0,0,0,0,0,1},  // row 6
-    {1,0,0,0,0,0,0,0,0,1},  // row 7
-    {1,0,0,0,0,0,0,0,0,1},  // row 8
-    {1,0,0,0,0,0,0,0,0,1},  // row 9
-    {1,0,0,0,0,0,0,0,0,1},  // row 10
-    {1,1,1,1,1,1,1,1,1,1}   // row 11: all ON
-};
 
-/*
- * (2) “matrix2” has been transposed from your original 10×12,
- *     so it now occupies 12 rows × 10 columns.
- *     That way, the diagonal‐and‐middle‐bars pattern remains recognizable.
- */
-uint8_t matrix2[12][10] = {
-    {1,0,0,0,0,0,0,0,0,1},  // new row 0  (was old col 0)
-    {0,1,0,0,0,0,0,0,1,0},  // new row 1  (was old col 1)
-    {0,0,1,0,0,0,0,1,0,0},  // new row 2  (was old col 2)
-    {0,0,0,1,0,0,1,0,0,0},  // new row 3  (was old col 3)
-    {0,0,0,0,1,1,0,0,0,0},  // new row 4  (was old col 4)
-    {0,0,0,0,1,1,0,0,0,0},  // new row 5  (was old col 5)
-    {0,0,0,0,1,1,0,0,0,0},  // new row 6  (was old col 6)
-    {0,0,0,0,1,1,0,0,0,0},  // new row 7  (was old col 7)
-    {0,0,0,1,0,0,1,0,0,0},  // new row 8  (was old col 8)
-    {0,0,1,0,0,0,0,1,0,0},  // new row 9  (was old col 9)
-    {0,1,0,0,0,0,0,0,1,0},  // new row 10 (was old col 10)
-    {1,0,0,0,0,0,0,0,0,1}   // new row 11 (was old col 11)
-};
-
-/*
- * (3) “matrix3” has also been transposed from your original 10×12,
- *     so you get a 12×10 representation of the “vertical‐bars + full middle rows” pattern.
- */
-uint8_t matrix3[12][10] = {
-    {1,1,1,1,1,1,1,1,1,1},  // new row 5  (old col 5)
-    {0,0,0,0,1,1,0,0,0,0},  // new row 1  (old col 1)
-    {0,0,0,0,1,1,0,0,0,1},  // new row 0  (old col 0)
-    {0,0,0,0,1,1,0,0,0,0},  // new row 2  (old col 2)
-    {0,0,0,0,1,1,0,0,0,0},  // new row 3  (old col 3)
-    {0,0,0,0,1,1,0,0,0,0},  // new row 4  (old col 4)
-    {0,0,0,0,1,1,0,0,0,0},  // new row 7  (old col 7)
-    {1,1,1,1,1,1,1,1,1,1},  // new row 6  (old col 6)
-    {0,0,0,0,1,1,0,0,0,0},  // new row 8  (old col 8)
-    {0,0,0,0,1,1,0,0,0,0},  // new row 9  (old col 9)
-    {0,0,0,0,1,1,0,0,0,0},  // new row 10 (old col 10)
-    {0,0,0,0,1,1,0,0,0,0}   // new row 11 (old col 11)
-};
-
-/*
- * Updated encode_matrix: now iterates over 12 rows and 10 columns,
- * and computes flat_index = row*10 + col (0..119). The split into
- * A1/B1/A2/B2 is unchanged (each holds 30 bits, for 120 total).
- */
-void encode_matrix( const uint8_t matrix[12][10],
+void encode_matrix(int8_t matrix[12][10],
                     uint32_t *valueA1, uint32_t *valueB1,
                     uint32_t *valueA2, uint32_t *valueB2) {
 
@@ -106,6 +77,7 @@ void encode_matrix( const uint8_t matrix[12][10],
 
 int main() {
     // Frame buffers
+    static int8_t field[FIELD_WIDTH][FIELD_HEIGHT];
 
     volatile uint16_t rgb565[IMAGE_SIZE];
     volatile uint8_t grayScale[IMAGE_SIZE];
@@ -114,7 +86,8 @@ int main() {
 
     // Peripherals
     volatile unsigned int* vga = (unsigned int*)0x50000020;
-    volatile unsigned int* gpio = (unsigned int*)0x40000000;
+    volatile unsigned int* gpio_dip7 = (unsigned int*)0x40000000;
+    volatile unsigned int* gpio_butt = (unsigned int*)0x40000100;
 
     camParameters camParams;
     volatile ProfilingStatus profData;
@@ -126,16 +99,25 @@ int main() {
     
     asm_reset_profiling();
 
+
+
     uint32_t A1, B1, A2, B2;
-    encode_matrix(matrix3, &A1, &B1, &A2, &B2);
+    // encode_matrix(matrix3, &A1, &B1, &A2, &B2);
+
+
 
     while (1) {
+        uint32_t nJoystick = gpio_butt[0];
+        
+
+        updateSnakeGame(field, mapJoystickToDirection(nJoystick));  // Example command, can be replaced with actual input handling
+        encode_matrix(field, &A1, &B1, &A2, &B2);
         // Image capture
         takeSingleImageBlocking((uint32_t)&rgb565[0]);
 
         // DIP switch value to 7-segment
-        uint32_t dipSwitch = gpio_get_DipSw(gpio);
-        gpio_set_sevenSeg(gpio, dipSwitch);
+        uint32_t dipSwitch = gpio_get_DipSw(gpio_dip7);
+        gpio_set_sevenSeg(gpio_dip7, dipSwitch);
 
         // Profiling start
         asm_enable_profiling_counters();
@@ -143,25 +125,9 @@ int main() {
         // Display first part
         asm_ledMatrix_W(A1, B1);
         asm_ledMatrix_W(A2, B2);
-
-        for (int i = 0; i < 12; i++) {
-            for (int j = 0; j < 10; j++) {
-                printf("%d ", matrix3[i][j]);
-            }
-            printf("\n");
-        }
-        printf("A1 = 0x%08X, B1 = 0x%08X, A2 = 0x%08X, B2 = 0x%08X\n", A1, B1, A2, B2);
-
-        // Display second part
-       // asm_ledMatrix_W(valueA2, valueB2);
-
-
-
-
-
-
-
-
+        // printf("Joystick value: 0x%08X\n", nJoystick);
+        
+    
 
         // for (int i = 0; i < IMAGE_SIZE; i = i + 1) {
         //     printf("rgb565[%d] = 0x%04X\n", i, rgb565[i]);
@@ -263,3 +229,6 @@ int main() {
             
         //     asm_DMA_W(DMA_BLOCK_SIZE, DMA_USED_BLOCK_SIZE); // Reset DMA block size
         // }
+
+
+
